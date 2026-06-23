@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { db } from '../services/firebase';
+import React, { useState, useEffect } from 'react';
+import { db, auth } from '../services/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
 import { uploadToCloudinary } from '../services/cloudinary';
 
 export default function Admin() {
+  const [user, setUser] = useState(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('Halk Eğitimi');
@@ -12,45 +14,87 @@ export default function Admin() {
   const [pdfFile, setPdfFile] = useState(null);
   const [uploading, setUploading] = useState(false);
 
+  // Kullanıcı durumunu dinle
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Google ile Giriş Fonksiyonu
+  const handleGoogleLogin = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error("Giriş hatası:", error);
+      alert("Giriş yapılamadı. Tarayıcınızın açılır pencere engelleyicisini kontrol edin.");
+    }
+  };
+
+  const handleLogout = () => {
+    signOut(auth);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setUploading(true);
-    console.log("ADIM 1: Kaydetme tıklandı, işlem başlıyor...");
 
     try {
       let uploadedPdfUrl = "";
-      
       if (pdfFile) {
-        console.log("ADIM 2: PDF dosyası Cloudinary sunucularına gönderiliyor...");
         uploadedPdfUrl = await uploadToCloudinary(pdfFile);
-        console.log("ADIM 3: Cloudinary yüklemesi başarılı! Link:", uploadedPdfUrl);
       }
       
-      console.log("ADIM 4: Tüm bilgiler Firebase veritabanına yazılıyor...");
+      const finalTopic = customTopic || topic || 'Genel';
+      
       await addDoc(collection(db, "articles"), {
         title,
         content,
         category,
-        topic: customTopic || topic || 'Genel',
+        topic: finalTopic,
         pdfUrl: uploadedPdfUrl,
+        // Hangi adminin eklediğini de kaydedelim
+        authorName: user.displayName,
+        authorEmail: user.email,
         createdAt: new Date()
       });
 
-      console.log("ADIM 5: Tüm işlemler kusursuz tamamlandı!");
-      alert("İçerik başarıyla yayınlandı ve ana sayfaya eklendi!");
+      alert("İçerik başarıyla yayınlandı!");
     } catch (error) {
-      console.error("HATA YAKALANDI:", error);
-      alert("Bir hata oluştu. Lütfen Konsol ekranını kontrol et.");
+      console.error("Hata:", error);
+      alert("Yükleme sırasında hata oluştu.");
     } finally {
       setUploading(false);
     }
   };
 
+  // Giriş Yapılmamışsa Sadece Google Butonunu Göster
+  if (!user) {
+    return (
+      <div style={{ maxWidth: '400px', margin: '100px auto', backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+        <h2 style={{ color: '#004170', marginBottom: '20px' }}>Yönetici Girişi</h2>
+        <p style={{ color: '#64748b', marginBottom: '30px', fontSize: '14px' }}>Eğitim materyali eklemek için yetkili hesapla giriş yapın.</p>
+        <button 
+          onClick={handleGoogleLogin} 
+          style={{ backgroundColor: '#4285F4', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', width: '100%', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+          🌐 Google ile Giriş Yap
+        </button>
+      </div>
+    );
+  }
+
+  // Giriş Yapılmışsa Admin Formunu Göster
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-      <h2 style={{ color: '#004170', borderBottom: '2px solid #10b981', paddingBottom: '10px', marginBottom: '30px' }}>
-        Yeni Eğitim Materyali Ekle
-      </h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #10b981', paddingBottom: '10px', marginBottom: '30px' }}>
+        <div>
+          <h2 style={{ color: '#004170', margin: 0 }}>Yeni Eğitim Materyali Ekle</h2>
+          <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#64748b' }}>Hoş geldin, {user.displayName}</p>
+        </div>
+        <button onClick={handleLogout} style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', color: '#475569' }}>Güvenli Çıkış</button>
+      </div>
 
       <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         <div>
