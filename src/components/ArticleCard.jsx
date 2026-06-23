@@ -22,25 +22,31 @@ export default function ArticleCard({ item }) {
         
         {/* Başlık ve Özet */}
         <h3 style={{ color: '#004170', marginTop: '0', fontSize: '18px', lineHeight: '1.4' }}>{item.title}</h3>
-        <p style={{ color: '#475569', fontSize: '14px', lineHeight: '1.6' }}>{item.summary}</p>
+        <p style={{ color: '#475569', fontSize: '14px', lineHeight: '1.6' }}>{item.content || item.summary}</p>
       </div>
       
-      {/* İndirme Butonu */}
+      {/* Gerçek İndirme / Görüntüleme Butonu */}
       <button 
-        onClick={() => alert(`Bu buton daha sonra doğrudan şu PDF'yi indirecek: ${item.pdfUrl}`)}
+        onClick={() => {
+          if(item.pdfUrl) {
+            window.open(item.pdfUrl, '_blank');
+          } else {
+            alert('Bu eğitim için henüz bir PDF dosyası yüklenmemiş.');
+          }
+        }}
         style={{
           marginTop: '20px',
-          backgroundColor: '#f8fafc',
-          color: '#004170',
-          border: '1px solid #cbd5e1',
+          backgroundColor: item.pdfUrl ? '#f0fdf4' : '#f8fafc',
+          color: item.pdfUrl ? '#16a34a' : '#94a3b8',
+          border: `1px solid ${item.pdfUrl ? '#bbf7d0' : '#cbd5e1'}`,
           padding: '12px',
           borderRadius: '4px',
-          cursor: 'pointer',
+          cursor: item.pdfUrl ? 'pointer' : 'not-allowed',
           fontWeight: 'bold',
           width: '100%',
-          transition: 'background-color 0.2s'
+          transition: 'all 0.2s'
         }}>
-        📥 PDF Sunumunu İndir / Görüntüle
+        {item.pdfUrl ? '📥 PDF Sunumunu Görüntüle' : '📄 PDF Bulunmuyor'}
       </button>
     </div>
   );
