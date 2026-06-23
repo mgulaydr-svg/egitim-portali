@@ -13,6 +13,8 @@ export default function Admin() {
   const [customTopic, setCustomTopic] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
   const [uploading, setUploading] = useState(false);
+  // BURAYA KENDİ GMAİL ADRESİNİ YAZIYORSUN:
+  const adminEmail = "mgulaydr@gmail.com";
 
   // Kullanıcı durumunu dinle
   useEffect(() => {
@@ -70,22 +72,30 @@ export default function Admin() {
     }
   };
 
-  // Giriş Yapılmamışsa Sadece Google Butonunu Göster
+  // Giriş Yapılmamışsa Google Butonunu Göster
   if (!user) {
     return (
       <div style={{ maxWidth: '400px', margin: '100px auto', backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', textAlign: 'center' }}>
         <h2 style={{ color: '#004170', marginBottom: '20px' }}>Yönetici Girişi</h2>
-        <p style={{ color: '#64748b', marginBottom: '30px', fontSize: '14px' }}>Eğitim materyali eklemek için yetkili hesapla giriş yapın.</p>
-        <button 
-          onClick={handleGoogleLogin} 
-          style={{ backgroundColor: '#4285F4', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', width: '100%', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
+        <button onClick={handleGoogleLogin} style={{ backgroundColor: '#4285F4', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', width: '100%', fontSize: '16px' }}>
           🌐 Google ile Giriş Yap
         </button>
       </div>
     );
   }
 
-  // Giriş Yapılmışsa Admin Formunu Göster
+  // GİRİŞ YAPILMIŞ AMA E-POSTA DOĞRU DEĞİLSE (YETKİSİZ KULLANICI):
+  if (user && user.email !== adminEmail) {
+    return (
+      <div style={{ maxWidth: '400px', margin: '100px auto', backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', textAlign: 'center' }}>
+        <h2 style={{ color: '#b91c1c', marginBottom: '20px' }}>⚠️ Yetkisiz Erişim</h2>
+        <p style={{ color: '#64748b', marginBottom: '30px' }}>Bu e-posta adresi (`{user.email}`) yönetim paneli için yetkilendirilmemiştir.</p>
+        <button onClick={handleLogout} style={{ backgroundColor: '#475569', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Çıkış Yap</button>
+      </div>
+    );
+  }
+
+  // Giriş Yapılmış VE E-posta Doğruysa Formu Göster
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #10b981', paddingBottom: '10px', marginBottom: '30px' }}>
