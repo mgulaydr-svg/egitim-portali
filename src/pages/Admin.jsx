@@ -15,31 +15,32 @@ export default function Admin() {
   const handleSave = async (e) => {
     e.preventDefault();
     setUploading(true);
+    console.log("ADIM 1: Kaydetme tıklandı, işlem başlıyor...");
 
     try {
       let uploadedPdfUrl = "";
       
-      // Eğer PDF seçildiyse önce Cloudinary'ye yükle
       if (pdfFile) {
+        console.log("ADIM 2: PDF dosyası Cloudinary sunucularına gönderiliyor...");
         uploadedPdfUrl = await uploadToCloudinary(pdfFile);
+        console.log("ADIM 3: Cloudinary yüklemesi başarılı! Link:", uploadedPdfUrl);
       }
       
-      const finalTopic = customTopic || topic || 'Genel';
-      
-      // Sonra tüm bilgileri Firebase'e kaydet
+      console.log("ADIM 4: Tüm bilgiler Firebase veritabanına yazılıyor...");
       await addDoc(collection(db, "articles"), {
         title,
         content,
         category,
-        topic: finalTopic,
+        topic: customTopic || topic || 'Genel',
         pdfUrl: uploadedPdfUrl,
         createdAt: new Date()
       });
 
+      console.log("ADIM 5: Tüm işlemler kusursuz tamamlandı!");
       alert("İçerik başarıyla yayınlandı ve ana sayfaya eklendi!");
     } catch (error) {
-      console.error("Hata:", error);
-      alert("Kaydetme sırasında bir hata oluştu. Lütfen konsolu kontrol edin.");
+      console.error("HATA YAKALANDI:", error);
+      alert("Bir hata oluştu. Lütfen Konsol ekranını kontrol et.");
     } finally {
       setUploading(false);
     }
