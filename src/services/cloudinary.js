@@ -1,6 +1,6 @@
 export const uploadToCloudinary = async (file) => {
-    const cloudName = "YOUR_CLOUDINARY_CLOUD_NAME";
-    const uploadPreset = "YOUR_UNSIGNED_PRESET_NAME"; // Önceki projelerdeki preset
+    const cloudName = "dnz1jxdqm";
+    const uploadPreset = "icerik_kutuphanesi"; // Önceki projelerdeki preset
     const formData = new FormData();
     formData.append("file", file);
     formData.append("upload_preset", uploadPreset);
