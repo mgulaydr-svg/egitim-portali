@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../services/firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore'; // updateDoc eklendi
 import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
 import { uploadToCloudinary } from '../services/cloudinary';
 
@@ -8,17 +8,23 @@ export default function Admin() {
   const [user, setUser] = useState(null);
   const [articles, setArticles] = useState([]);
   
+  // Form State'leri
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('Halk Eğitimi');
   const [topic, setTopic] = useState('');
   const [customTopic, setCustomTopic] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
-  const [imageFile, setImageFile] = useState(null); // GÖRSEL İÇİN YENİ STATE EKLENDİ
+  const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
 
+  // Düzenleme (Edit) State'leri
+  const [editingId, setEditingId] = useState(null); // Hangi döküman düzenleniyor?
+  const [currentPdfUrl, setCurrentPdfUrl] = useState(''); // Eski PDF kaybolmasın diye
+  const [currentImageUrl, setCurrentImageUrl] = useState(''); // Eski görsel kaybolmasın diye
+
   // KENDİ YETKİLİ ADRESİNİ YAZ
-  const adminEmail = "mgulaydr@gmail.com";
+  const adminEmail = "senin-gmail-adresin@gmail.com";
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -40,13 +46,38 @@ export default function Admin() {
     }
   };
 
+  // Düzenle Butonuna Basıldığında Formu Dolduran Fonksiyon
+  const handleEditSelect = (art) => {
+    setEditingId(art.id);
+    setTitle(art.title || '');
+    setContent(art.content || '');
+    setCategory(art.category || 'Halk Eğitimi');
+    setTopic(art.topic || '');
+    setCustomTopic('');
+    setCurrentPdfUrl(art.pdfUrl || '');
+    setImageUrl(art.imageUrl || '');
+    
+    // Formu doldurunca sayfayı yumuşakça yukarı kaydır
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Düzenleme Modundan Çıkma / Formu Temizleme Fonksiyonu
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setTitle('');
+    setContent('');
+    setCategory('Halk Eğitimi');
+    setTopic('');
+    setCustomTopic('');
+    setPdfFile(null);
+    setImageFile(null);
+    setCurrentPdfUrl('');
+    setImageUrl('');
+  };
+
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
-    try {
-      await signInWithPopup(auth, provider);
-    } catch (error) {
-      alert("Giriş başarısız.");
-    }
+    try { await signInWithPopup(auth, provider); } catch (error) { alert("Giriş başarısız."); }
   };
 
   const handleLogout = () => { signOut(auth); };
@@ -55,33 +86,45 @@ export default function Admin() {
     e.preventDefault();
     setUploading(true);
     try {
-      let uploadedPdfUrl = "";
-      let uploadedImageUrl = "";
+      // Eğer yeni dosya seçilmediyse eski url'leri koru, seçildiyse yenisini yükle
+      let uploadedPdfUrl = currentPdfUrl;
+      let uploadedImageUrl = currentImageUrl;
 
-      // Eğer PDF seçilmişse Cloudinary'ye gönder
       if (pdfFile) {
         uploadedPdfUrl = await uploadToCloudinary(pdfFile);
       }
-
-      // Eğer Görsel seçilmişse Cloudinary'ye gönder
       if (imageFile) {
         uploadedImageUrl = await uploadToCloudinary(imageFile);
       }
       
-      await addDoc(collection(db, "articles"), {
+      const articleData = {
         title,
         content,
         category,
         topic: customTopic || topic || 'Genel',
         pdfUrl: uploadedPdfUrl,
-        imageUrl: uploadedImageUrl, // Firebase'e görsel linkini de kaydediyoruz
-        createdAt: new Date()
-      });
+        imageUrl: uploadedImageUrl,
+        updatedAt: new Date()
+      };
 
-      alert("İçerik başarıyla yayınlandı!");
-      fetchArticles(); 
+      if (editingId) {
+        // MEVCUT YAZIYI GÜNCELLEME (YENİ ÖZELLİK)
+        await updateDoc(doc(db, "articles", editingId), articleData);
+        alert("İçerik başarıyla güncellendi!");
+      } else {
+        // SIFIRDAN YENİ YAZI EKLEME
+        await addDoc(collection(db, "articles"), {
+          ...articleData,
+          createdAt: new Date()
+        });
+        alert("İçerik başarıyla yayınlandı!");
+      }
+
+      handleCancelEdit(); // Formu sıfırla ve düzenleme modundan çık
+      fetchArticles(); // Listeyi yenile
     } catch (error) {
-      alert("Hata oluştu.");
+      console.error(error);
+      alert("İşlem sırasında hata oluştu.");
     } finally {
       setUploading(false);
     }
@@ -92,9 +135,10 @@ export default function Admin() {
       try {
         await deleteDoc(doc(db, "articles", id));
         alert("Yayın başarıyla kaldırıldı.");
+        if(editingId === id) handleCancelEdit();
         fetchArticles(); 
       } catch (error) {
-        alert("Silme işlemi sırasında yetki hatası oluştu.");
+        alert("Silme işlemi başarısız.");
       }
     }
   };
@@ -123,20 +167,22 @@ export default function Admin() {
     <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '40px', textAlign: 'left' }}>
       <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #10b981', paddingBottom: '10px', marginBottom: '30px' }}>
-          <h2 style={{ color: '#004170', margin: 0 }}>Yeni Eğitim Materyali Ekle</h2>
+          <h2 style={{ color: '#004170', margin: 0 }}>
+            {editingId ? '📝 Eğitim Materyalini Düzenle' : 'Yeni Eğitim Materyali Ekle'}
+          </h2>
           <button onClick={handleLogout} style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Güvenli Çıkış</button>
         </div>
 
         <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div>
             <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Makale / Sunum Başlığı</label>
-            <input type="text" required onChange={e => setTitle(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <input type="text" required value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
           </div>
 
           <div style={{ display: 'flex', gap: '20px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Eğitim Türü</label>
-              <select onChange={e => setCategory(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+              <select value={category} onChange={e => setCategory(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
                 <option value="Halk Eğitimi">Halk Eğitimi</option>
                 <option value="Hizmet İçi Eğitim">Hizmet İçi Eğitim</option>
                 <option value="Sunumlar & İnfografikler">Sunumlar & İnfografikler</option>
@@ -144,7 +190,7 @@ export default function Admin() {
             </div>
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Ana Konu</label>
-              <select onChange={e => setTopic(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+              <select value={topic} onChange={e => setTopic(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
                 <option value="">-- Konu Seçin --</option>
                 <option value="Sağlık Okuryazarlığı">Sağlık Okuryazarlığı</option>
                 <option value="Salgın Yönetimi">Salgın Yönetimi</option>
@@ -155,34 +201,46 @@ export default function Admin() {
 
           <div>
             <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Farklı Bir Konu Ekle</label>
-            <input type="text" onChange={e => setCustomTopic(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            <input type="text" value={customTopic} onChange={e => setCustomTopic(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
           </div>
 
           <div>
             <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Eğitim Metni (Markdown ve Tablo Girişi Yapabilirsiniz)</label>
-            <textarea rows="10" required onChange={e => setContent(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}></textarea>
+            <textarea rows="10" required value={content} onChange={e => setContent(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}></textarea>
           </div>
 
-          {/* GÖRSEL YÜKLEME KUTUSU (YENİ EKLENDİ) */}
           <div style={{ backgroundColor: '#eff6ff', padding: '20px', borderRadius: '8px', border: '1px dashed #3b82f6' }}>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#1e3a8a' }}>🖼️ Öne Çıkan Görsel Yükle (JPG/PNG)</label>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#1e3a8a' }}>
+              🖼️ {editingId ? 'Görseli Değiştir / Yeni Görsel Yükle (JPG/PNG)' : 'Öne Çıkan Görsel Yükle (JPG/PNG)'}
+            </label>
             <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files[0])} style={{ width: '100%' }} />
-            <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#475569' }}>* Kartın üst kısmında gösterilecek görsel. Yatay bir fotoğraf önerilir.</p>
+            {editingId && currentImageUrl && <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#2563eb' }}>✓ Şu an mevcut bir görsel tanımlı. Değiştirmek istemiyorsan yeni dosya seçme.</p>}
           </div>
 
           <div style={{ backgroundColor: '#f0fdf4', padding: '20px', borderRadius: '8px', border: '1px dashed #10b981' }}>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#14532d' }}>📥 Sunum Yükle (PDF)</label>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#14532d' }}>
+              📥 {editingId ? 'PDF Belgesini Değiştir / Yeni PDF Yükle' : 'Sunum Yükle (PDF)'}
+            </label>
             <input type="file" accept=".pdf" onChange={e => setPdfFile(e.target.files[0])} style={{ width: '100%' }} />
+            {editingId && currentPdfUrl && <p style={{ margin: '5px 0 0 0', fontSize: '12px', color: '#16a34a' }}>✓ Şu an mevcut bir PDF belgesi tanımlı. Değiştirmek istemiyorsan yeni dosya seçme.</p>}
           </div>
 
-          <button type="submit" disabled={uploading} style={{ backgroundColor: uploading ? '#94a3b8' : '#004170', color: 'white', padding: '15px', border: 'none', borderRadius: '4px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>
-            {uploading ? 'Yükleniyor (Bu işlem biraz sürebilir)...' : 'Sisteme Yükle ve Yayınla'}
-          </button>
+          <div style={{ display: 'flex', gap: '15px' }}>
+            <button type="submit" disabled={uploading} style={{ flex: 1, backgroundColor: uploading ? '#94a3b8' : (editingId ? '#10b981' : '#004170'), color: 'white', padding: '15px', border: 'none', borderRadius: '4px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>
+              {uploading ? 'Yükleniyor...' : (editingId ? 'Değişiklikleri Kaydet' : 'Sisteme Yükle ve Yayınla')}
+            </button>
+            {editingId && (
+              <button type="button" onClick={handleCancelEdit} style={{ backgroundColor: '#64748b', color: 'white', padding: '15px 25px', border: 'none', borderRadius: '4px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>
+                Vazgeç
+              </button>
+            )}
+          </div>
         </form>
       </div>
 
+      {/* LİSTEDE DÜZENLE BUTONU EKLENDİ */}
       <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-        <h3 style={{ color: '#004170', borderBottom: '2px solid #ef4444', paddingBottom: '10px', marginTop: 0, marginBottom: '20px' }}>📁 Mevcut Yayınları Yönet</h3>
+        <h3 style={{ color: '#004170', borderBottom: '2px solid #3b82f6', paddingBottom: '10px', marginTop: 0, marginBottom: '20px' }}>📁 Mevcut Yayınları Yönet</h3>
         {articles.length === 0 ? (
           <p style={{ color: '#64748b' }}>Sistemde henüz yayınlanmış materyal bulunmuyor.</p>
         ) : (
@@ -194,9 +252,14 @@ export default function Admin() {
                   <span style={{ fontSize: '12px', color: '#64748b', marginRight: '10px' }}>{art.category}</span>
                   <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 'bold' }}>{art.topic}</span>
                 </div>
-                <button onClick={() => handleDelete(art.id)} style={{ backgroundColor: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  🗑️ Yayından Kaldır
-                </button>
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => handleEditSelect(art)} style={{ backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    ✏️ Düzenle
+                  </button>
+                  <button onClick={() => handleDelete(art.id)} style={{ backgroundColor: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    🗑️ Kaldır
+                  </button>
+                </div>
               </div>
             ))}
           </div>
