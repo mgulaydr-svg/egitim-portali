@@ -78,7 +78,8 @@ export default function ArticleCard({ item }) {
             width: '100%',
             transition: 'all 0.2s'
           }}>
-          {item.pdfUrl ? '📥 Kaynağı Görüntüle' : '📄 Kaynak Eklenmemiş'}
+          {/* BUTON METİNLERİ BURADA DEĞİŞTİRİLDİ */}
+          {item.pdfUrl ? '📥 Sunumu Görüntüle' : '📄 Sunum Eklenmemiş'}
         </button>
       </div>
     </div>
