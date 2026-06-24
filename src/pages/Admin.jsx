@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../services/firebase';
-import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore'; // updateDoc eklendi
+import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
 import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
 import { uploadToCloudinary } from '../services/cloudinary';
 
@@ -19,9 +19,9 @@ export default function Admin() {
   const [uploading, setUploading] = useState(false);
 
   // Düzenleme (Edit) State'leri
-  const [editingId, setEditingId] = useState(null); // Hangi döküman düzenleniyor?
-  const [currentPdfUrl, setCurrentPdfUrl] = useState(''); // Eski PDF kaybolmasın diye
-  const [currentImageUrl, setCurrentImageUrl] = useState(''); // Eski görsel kaybolmasın diye
+  const [editingId, setEditingId] = useState(null);
+  const [currentPdfUrl, setCurrentPdfUrl] = useState(''); 
+  const [currentImageUrl, setCurrentImageUrl] = useState(''); 
 
   // KENDİ YETKİLİ ADRESİNİ YAZ
   const adminEmail = "mgulaydr@gmail.com";
@@ -46,7 +46,6 @@ export default function Admin() {
     }
   };
 
-  // Düzenle Butonuna Basıldığında Formu Dolduran Fonksiyon
   const handleEditSelect = (art) => {
     setEditingId(art.id);
     setTitle(art.title || '');
@@ -55,13 +54,11 @@ export default function Admin() {
     setTopic(art.topic || '');
     setCustomTopic('');
     setCurrentPdfUrl(art.pdfUrl || '');
-    setImageUrl(art.imageUrl || '');
+    setCurrentImageUrl(art.imageUrl || ''); // HATA BURADAYDI, DÜZELTİLDİ
     
-    // Formu doldurunca sayfayı yumuşakça yukarı kaydır
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Düzenleme Modundan Çıkma / Formu Temizleme Fonksiyonu
   const handleCancelEdit = () => {
     setEditingId(null);
     setTitle('');
@@ -72,7 +69,7 @@ export default function Admin() {
     setPdfFile(null);
     setImageFile(null);
     setCurrentPdfUrl('');
-    setImageUrl('');
+    setCurrentImageUrl(''); // HATA BURADAYDI, DÜZELTİLDİ
   };
 
   const handleGoogleLogin = async () => {
@@ -86,7 +83,6 @@ export default function Admin() {
     e.preventDefault();
     setUploading(true);
     try {
-      // Eğer yeni dosya seçilmediyse eski url'leri koru, seçildiyse yenisini yükle
       let uploadedPdfUrl = currentPdfUrl;
       let uploadedImageUrl = currentImageUrl;
 
@@ -108,11 +104,9 @@ export default function Admin() {
       };
 
       if (editingId) {
-        // MEVCUT YAZIYI GÜNCELLEME (YENİ ÖZELLİK)
         await updateDoc(doc(db, "articles", editingId), articleData);
         alert("İçerik başarıyla güncellendi!");
       } else {
-        // SIFIRDAN YENİ YAZI EKLEME
         await addDoc(collection(db, "articles"), {
           ...articleData,
           createdAt: new Date()
@@ -120,8 +114,8 @@ export default function Admin() {
         alert("İçerik başarıyla yayınlandı!");
       }
 
-      handleCancelEdit(); // Formu sıfırla ve düzenleme modundan çık
-      fetchArticles(); // Listeyi yenile
+      handleCancelEdit(); 
+      fetchArticles(); 
     } catch (error) {
       console.error(error);
       alert("İşlem sırasında hata oluştu.");
@@ -238,7 +232,6 @@ export default function Admin() {
         </form>
       </div>
 
-      {/* LİSTEDE DÜZENLE BUTONU EKLENDİ */}
       <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
         <h3 style={{ color: '#004170', borderBottom: '2px solid #3b82f6', paddingBottom: '10px', marginTop: 0, marginBottom: '20px' }}>📁 Mevcut Yayınları Yönet</h3>
         {articles.length === 0 ? (
