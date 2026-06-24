@@ -1,6 +1,12 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 export default function ArticleCard({ item }) {
+  const createExcerpt = (text) => {
+    if (!text) return "";
+    return text.length > 120 ? text.substring(0, 120) + "..." : text;
+  };
+
   return (
     <div style={{
       backgroundColor: '#ffffff',
@@ -14,33 +20,45 @@ export default function ArticleCard({ item }) {
       height: '100%'
     }}>
       <div>
-        {/* Kategori ve Konu Etiketleri */}
         <div style={{ display: 'flex', gap: '10px', marginBottom: '15px' }}>
           <span style={{ backgroundColor: '#004170', color: 'white', padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>{item.category}</span>
           <span style={{ backgroundColor: '#10b981', color: 'white', padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>{item.topic}</span>
         </div>
         
-        {/* Başlık ve Özet */}
-        <h3 style={{ color: '#004170', marginTop: '0', fontSize: '18px', lineHeight: '1.4' }}>{item.title}</h3>
-        <p style={{ color: '#475569', fontSize: '14px', lineHeight: '1.6' }}>{item.summary}</p>
+        <h3 style={{ color: '#004170', marginTop: '0', fontSize: '18px', lineHeight: '1.4' }}>
+          <Link to={`/article/${item.id}`} style={{ color: '#004170', textDecoration: 'none' }}>{item.title}</Link>
+        </h3>
+        
+        <p style={{ color: '#475569', fontSize: '14px', lineHeight: '1.6' }}>
+          {createExcerpt(item.content)}
+        </p>
+
+        <Link to={`/article/${item.id}`} style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '14px', fontWeight: 'bold', display: 'inline-block', marginBottom: '10px' }}>
+          Devamını Oku ➔
+        </Link>
       </div>
       
-      {/* İndirme Butonu */}
       <button 
-        onClick={() => alert(`Bu buton daha sonra doğrudan şu PDF'yi indirecek: ${item.pdfUrl}`)}
+        onClick={() => {
+          if(item.pdfUrl) {
+            window.open(item.pdfUrl, '_blank');
+          } else {
+            alert('Bu eğitim için henüz bir PDF dosyası yüklenmemiş.');
+          }
+        }}
         style={{
-          marginTop: '20px',
-          backgroundColor: '#f8fafc',
-          color: '#004170',
-          border: '1px solid #cbd5e1',
+          marginTop: '10px',
+          backgroundColor: item.pdfUrl ? '#f0fdf4' : '#f8fafc',
+          color: item.pdfUrl ? '#16a34a' : '#94a3b8',
+          border: `1px solid ${item.pdfUrl ? '#bbf7d0' : '#cbd5e1'}`,
           padding: '12px',
           borderRadius: '4px',
-          cursor: 'pointer',
+          cursor: item.pdfUrl ? 'pointer' : 'not-allowed',
           fontWeight: 'bold',
           width: '100%',
-          transition: 'background-color 0.2s'
+          transition: 'all 0.2s'
         }}>
-        📥 PDF Sunumunu İndir / Görüntüle
+        {item.pdfUrl ? '📥 PDF Sunumunu Görüntüle' : '📄 PDF Bulunmuyor'}
       </button>
     </div>
   );

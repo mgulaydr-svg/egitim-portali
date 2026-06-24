@@ -12,6 +12,8 @@ export default function Home() {
       try {
         const querySnapshot = await getDocs(collection(db, "articles"));
         const items = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // En yeni eklenen en üstte çıksın diye sıralıyoruz
+        items.sort((a, b) => b.createdAt?.toDate() - a.createdAt?.toDate());
         setArticles(items);
       } catch (error) {
         console.error("Veri çekilirken hata oluştu:", error);
@@ -22,7 +24,8 @@ export default function Home() {
 
   const filteredData = articles.filter(item => 
     item.title?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.category?.toLowerCase().includes(searchTerm.toLowerCase())
+    item.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    item.topic?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -38,7 +41,7 @@ export default function Home() {
       </div>
 
       {filteredData.length === 0 ? (
-        <p style={{ textAlign: 'center', color: '#64748b', marginTop: '40px' }}>Henüz sisteme eklenmiş bir eğitim materyali bulunmuyor.</p>
+        <p style={{ textAlign: 'center', color: '#64748b', marginTop: '40px' }}>Henüz sisteme eklenmiş bir eğitim materyali bulunmuyor veya aramanıza uygun sonuç yok.</p>
       ) : (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '25px' }}>
           {filteredData.map(item => (
