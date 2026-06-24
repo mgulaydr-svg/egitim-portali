@@ -51,6 +51,7 @@ export default function ArticleDetail() {
       const line = lines[i];
       const trimmed = line.trim();
 
+      // 1. KUTU (ASIDE) MANTIĞI
       if (trimmed === '<aside>') {
         inAside = true;
         asideContent = [];
@@ -77,6 +78,22 @@ export default function ArticleDetail() {
         continue;
       }
 
+      // YENİ ÖZELLİK: METİN İÇİ GÖRSEL VE GRAFİK TANIMA
+      // Eğer satır ![Görsel Adı](Görsel Linki) formatındaysa bunu resme çevir
+      const imageMatch = trimmed.match(/^!\[(.*?)\]\((.*?)\)$/);
+      if (imageMatch) {
+        const altText = imageMatch[1];
+        const imageUrl = imageMatch[2];
+        elements.push(
+          <div key={`img-${i}`} style={{ margin: '35px 0', textAlign: 'center' }}>
+            <img src={imageUrl} alt={altText} style={{ maxWidth: '100%', height: 'auto', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.1)' }} />
+            {altText && <p style={{ color: '#64748b', fontSize: '13px', marginTop: '10px', fontStyle: 'italic' }}>{altText}</p>}
+          </div>
+        );
+        continue;
+      }
+
+      // 2. TABLO MANTIĞI
       if (trimmed.startsWith('|')) {
         if (!inTable) {
           inTable = true;
