@@ -15,7 +15,7 @@ export default function Admin() {
   const [uploading, setUploading] = useState(false);
 
   // DİKKAT: BURAYA KENDİ GMAIL ADRESİNİ YAZ
-  const adminEmail = "senin-gmail-adresin@gmail.com";
+  const adminEmail = "mgulaydr@gmail.com";
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
