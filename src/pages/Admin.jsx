@@ -24,7 +24,7 @@ export default function Admin() {
   const [currentImageUrl, setCurrentImageUrl] = useState(''); // Eski görsel kaybolmasın diye
 
   // KENDİ YETKİLİ ADRESİNİ YAZ
-  const adminEmail = "senin-gmail-adresin@gmail.com";
+  const adminEmail = "mgulaydr@gmail.com";
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
