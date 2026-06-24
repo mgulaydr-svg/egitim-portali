@@ -3,24 +3,19 @@ import { Link } from 'react-router-dom';
 
 export default function Navbar() {
   return (
-    <header>
-      {/* Koyu Mavi Ana Üst Menü */}
-      <div style={{ backgroundColor: '#002b49', padding: '15px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white' }}>
-        <h1 style={{ margin: 0, fontSize: '24px', letterSpacing: '1px' }}>
-          <Link to="/" style={{ color: 'white', textDecoration: 'none' }}>EĞİTİM PORTALI</Link>
-        </h1>
-        <nav>
-          <Link to="/" style={{ color: 'white', marginRight: '20px', textDecoration: 'none', fontSize: '14px' }}>Araştırmaya Başlayın</Link>
-          <Link to="/admin" style={{ backgroundColor: '#b91c1c', color: 'white', padding: '8px 16px', borderRadius: '4px', textDecoration: 'none', fontSize: '14px', fontWeight: 'bold' }}>Admin Girişi</Link>
-        </nav>
-      </div>
+    <nav style={{ backgroundColor: '#004170', padding: '15px 30px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'white', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+      <Link to="/" style={{ color: 'white', textDecoration: 'none', fontSize: '24px', fontWeight: 'bold' }}>
+        Eğitim Portalı
+      </Link>
       
-      {/* Açık Mavi Alt Menü */}
-      <div style={{ backgroundColor: '#3b82f6', padding: '10px 30px', display: 'flex', justifyContent: 'center', gap: '30px', color: 'white', fontSize: '14px', fontWeight: 'bold' }}>
-        <span style={{ cursor: 'pointer' }}>Halk Eğitimi Modülleri</span>
-        <span style={{ cursor: 'pointer' }}>Hizmet İçi Eğitimler</span>
-        <span style={{ cursor: 'pointer' }}>Sunumlar & İnfografikler</span>
+      <div style={{ display: 'flex', gap: '20px' }}>
+        <Link to="/?kategori=Halk Eğitimi" style={{ color: '#e2e8f0', textDecoration: 'none', fontWeight: '500', transition: 'color 0.2s' }}>Halk Eğitimi</Link>
+        <Link to="/?kategori=Hizmet İçi Eğitim" style={{ color: '#e2e8f0', textDecoration: 'none', fontWeight: '500', transition: 'color 0.2s' }}>Hizmet İçi Eğitim</Link>
+        <Link to="/?kategori=Sunumlar & İnfografikler" style={{ color: '#e2e8f0', textDecoration: 'none', fontWeight: '500', transition: 'color 0.2s' }}>Sunumlar & İnfografikler</Link>
+        <Link to="/admin" style={{ backgroundColor: '#10b981', color: 'white', padding: '6px 15px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold' }}>
+          Yönetici Girişi
+        </Link>
       </div>
-    </header>
+    </nav>
   );
 }

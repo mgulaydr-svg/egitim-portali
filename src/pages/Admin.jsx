@@ -7,18 +7,19 @@ import { uploadToCloudinary } from '../services/cloudinary';
 export default function Admin() {
   const [user, setUser] = useState(null);
   const [articles, setArticles] = useState([]);
+  
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('Halk Eğitimi');
   const [topic, setTopic] = useState('');
   const [customTopic, setCustomTopic] = useState('');
   const [pdfFile, setPdfFile] = useState(null);
+  const [imageFile, setImageFile] = useState(null); // GÖRSEL İÇİN YENİ STATE EKLENDİ
   const [uploading, setUploading] = useState(false);
 
-  // KENDİ YETKİLİ ADRESİN
+  // KENDİ YETKİLİ ADRESİNİ YAZ
   const adminEmail = "mgulaydr@gmail.com";
 
-  // Kullanıcı durumunu ve mevcut makaleleri yükle
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -55,8 +56,16 @@ export default function Admin() {
     setUploading(true);
     try {
       let uploadedPdfUrl = "";
+      let uploadedImageUrl = "";
+
+      // Eğer PDF seçilmişse Cloudinary'ye gönder
       if (pdfFile) {
         uploadedPdfUrl = await uploadToCloudinary(pdfFile);
+      }
+
+      // Eğer Görsel seçilmişse Cloudinary'ye gönder
+      if (imageFile) {
+        uploadedImageUrl = await uploadToCloudinary(imageFile);
       }
       
       await addDoc(collection(db, "articles"), {
@@ -65,11 +74,12 @@ export default function Admin() {
         category,
         topic: customTopic || topic || 'Genel',
         pdfUrl: uploadedPdfUrl,
+        imageUrl: uploadedImageUrl, // Firebase'e görsel linkini de kaydediyoruz
         createdAt: new Date()
       });
 
       alert("İçerik başarıyla yayınlandı!");
-      fetchArticles(); // Listeyi güncelle
+      fetchArticles(); 
     } catch (error) {
       alert("Hata oluştu.");
     } finally {
@@ -77,13 +87,12 @@ export default function Admin() {
     }
   };
 
-  // Veritabanından İçerik Silme Fonksiyonu
   const handleDelete = async (id) => {
     if (window.confirm("Bu eğitim materyalini tamamen silmek istediğinize emin misiniz?")) {
       try {
         await deleteDoc(doc(db, "articles", id));
         alert("Yayın başarıyla kaldırıldı.");
-        fetchArticles(); // Listeyi güncelle
+        fetchArticles(); 
       } catch (error) {
         alert("Silme işlemi sırasında yetki hatası oluştu.");
       }
@@ -105,7 +114,6 @@ export default function Admin() {
     return (
       <div style={{ maxWidth: '400px', margin: '100px auto', backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', textAlign: 'center' }}>
         <h2 style={{ color: '#b91c1c', marginBottom: '20px' }}>⚠️ Yetkisiz Erişim</h2>
-        <p>Giriş yapılan hesap: `{user.email}`</p>
         <button onClick={handleLogout} style={{ backgroundColor: '#475569', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Çıkış Yap</button>
       </div>
     );
@@ -113,7 +121,6 @@ export default function Admin() {
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '40px', textAlign: 'left' }}>
-      {/* EKLEME FORMU */}
       <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #10b981', paddingBottom: '10px', marginBottom: '30px' }}>
           <h2 style={{ color: '#004170', margin: 0 }}>Yeni Eğitim Materyali Ekle</h2>
@@ -132,6 +139,7 @@ export default function Admin() {
               <select onChange={e => setCategory(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
                 <option value="Halk Eğitimi">Halk Eğitimi</option>
                 <option value="Hizmet İçi Eğitim">Hizmet İçi Eğitim</option>
+                <option value="Sunumlar & İnfografikler">Sunumlar & İnfografikler</option>
               </select>
             </div>
             <div style={{ flex: 1 }}>
@@ -155,18 +163,24 @@ export default function Admin() {
             <textarea rows="10" required onChange={e => setContent(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}></textarea>
           </div>
 
+          {/* GÖRSEL YÜKLEME KUTUSU (YENİ EKLENDİ) */}
+          <div style={{ backgroundColor: '#eff6ff', padding: '20px', borderRadius: '8px', border: '1px dashed #3b82f6' }}>
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#1e3a8a' }}>🖼️ Öne Çıkan Görsel Yükle (JPG/PNG)</label>
+            <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files[0])} style={{ width: '100%' }} />
+            <p style={{ margin: '8px 0 0 0', fontSize: '13px', color: '#475569' }}>* Kartın üst kısmında gösterilecek görsel. Yatay bir fotoğraf önerilir.</p>
+          </div>
+
           <div style={{ backgroundColor: '#f0fdf4', padding: '20px', borderRadius: '8px', border: '1px dashed #10b981' }}>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>📥 Sunum Yükle (PDF)</label>
-            <input type="file" accept=".pdf" onChange={e => setPdfFile(e.target.files[0])} />
+            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#14532d' }}>📥 Sunum Yükle (PDF)</label>
+            <input type="file" accept=".pdf" onChange={e => setPdfFile(e.target.files[0])} style={{ width: '100%' }} />
           </div>
 
           <button type="submit" disabled={uploading} style={{ backgroundColor: uploading ? '#94a3b8' : '#004170', color: 'white', padding: '15px', border: 'none', borderRadius: '4px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>
-            {uploading ? 'Yükleniyor...' : 'Sisteme Yükle ve Yayınla'}
+            {uploading ? 'Yükleniyor (Bu işlem biraz sürebilir)...' : 'Sisteme Yükle ve Yayınla'}
           </button>
         </form>
       </div>
 
-      {/* İÇERİK YÖNETİM PANELİ (SİLME ALANI) */}
       <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
         <h3 style={{ color: '#004170', borderBottom: '2px solid #ef4444', paddingBottom: '10px', marginTop: 0, marginBottom: '20px' }}>📁 Mevcut Yayınları Yönet</h3>
         {articles.length === 0 ? (
