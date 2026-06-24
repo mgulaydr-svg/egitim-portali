@@ -26,7 +26,6 @@ export default function ArticleDetail() {
     fetchArticle();
   }, [id]);
 
-  // Yeni ve Akıllı Metin Dönüştürücü
   const renderFormattedContent = (rawText) => {
     if (!rawText) return "";
 
@@ -37,7 +36,6 @@ export default function ArticleDetail() {
     let inTable = false;
     let tableRows = [];
 
-    // Koyu (Bold) yazıları algılayan yardımcı fonksiyon
     const renderTextWithBold = (text) => {
       if (!text.includes('**')) return text;
       const parts = text.split(/(\*\*.*?\*\*)/g);
@@ -53,7 +51,6 @@ export default function ArticleDetail() {
       const line = lines[i];
       const trimmed = line.trim();
 
-      // 1. KUTU (ASIDE) MANTIĞI: Kutunun içindeki her şeyi biriktir
       if (trimmed === '<aside>') {
         inAside = true;
         asideContent = [];
@@ -66,7 +63,7 @@ export default function ArticleDetail() {
             {asideContent.map((aLine, aIdx) => {
               if(aLine.trim() === '') return <div key={`asc-${aIdx}`} style={{height: '10px'}} />;
               return (
-                <div key={`ast-${aIdx}`} style={{ color: '#166534', fontSize: '15px', lineHeight: '1.7', marginBottom: '8px' }}>
+                <div key={`ast-${aIdx}`} style={{ color: '#166534', fontSize: '15px', lineHeight: '1.7', marginBottom: '8px', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                   {renderTextWithBold(aLine)}
                 </div>
               )
@@ -80,7 +77,6 @@ export default function ArticleDetail() {
         continue;
       }
 
-      // 2. TABLO MANTIĞI
       if (trimmed.startsWith('|')) {
         if (!inTable) {
           inTable = true;
@@ -93,7 +89,7 @@ export default function ArticleDetail() {
           inTable = false;
           elements.push(
             <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '30px 0', borderRadius: '8px', boxShadow: '0 0 0 1px #e2e8f0' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', backgroundColor: 'white' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', backgroundColor: 'white', tableLayout: 'fixed' }}>
                 <tbody>
                   {tableRows.map((row, rIdx) => {
                     const cells = row.split('|').map(c => c.trim()).filter(c => c !== '');
@@ -101,7 +97,7 @@ export default function ArticleDetail() {
                     return (
                       <tr key={`tr-${rIdx}`} style={{ backgroundColor: isHeader ? '#f8fafc' : 'white', borderBottom: '1px solid #e2e8f0' }}>
                         {cells.map((cell, cIdx) => (
-                          <td key={`td-${cIdx}`} style={{ padding: '14px 16px', fontWeight: isHeader ? 'bold' : 'normal', color: isHeader ? '#0f172a' : '#334155', borderRight: cIdx !== cells.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                          <td key={`td-${cIdx}`} style={{ padding: '14px 16px', fontWeight: isHeader ? 'bold' : 'normal', color: isHeader ? '#0f172a' : '#334155', borderRight: cIdx !== cells.length - 1 ? '1px solid #e2e8f0' : 'none', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
                             {renderTextWithBold(cell)}
                           </td>
                         ))}
@@ -116,34 +112,30 @@ export default function ArticleDetail() {
         continue;
       }
 
-      // Boş satırlar
       if (trimmed === '') {
         elements.push(<div key={`space-${i}`} style={{ height: '12px' }} />);
         continue;
       }
 
-      // 3. BAŞLIKLAR
       if (trimmed.startsWith('## ')) {
-        elements.push(<h2 key={`h2-${i}`} style={{ color: '#004170', marginTop: '35px', marginBottom: '15px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', fontSize: '24px' }}>{renderTextWithBold(trimmed.replace('## ', ''))}</h2>);
+        elements.push(<h2 key={`h2-${i}`} style={{ color: '#004170', marginTop: '35px', marginBottom: '15px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', fontSize: '24px', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{renderTextWithBold(trimmed.replace('## ', ''))}</h2>);
         continue;
       }
       if (trimmed.startsWith('### ')) {
-        elements.push(<h3 key={`h3-${i}`} style={{ color: '#0f766e', marginTop: '25px', marginBottom: '12px', fontSize: '20px' }}>{renderTextWithBold(trimmed.replace('### ', ''))}</h3>);
+        elements.push(<h3 key={`h3-${i}`} style={{ color: '#0f766e', marginTop: '25px', marginBottom: '12px', fontSize: '20px', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{renderTextWithBold(trimmed.replace('### ', ''))}</h3>);
         continue;
       }
 
-      // 4. ÇİZGİLİ MADDELER (Özel Bullet Point Tasarımı)
       if (trimmed.startsWith('- ')) {
         elements.push(
           <div key={`ul-${i}`} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '10px' }}>
             <span style={{ color: '#10b981', marginRight: '12px', fontSize: '20px', lineHeight: '1.4' }}>•</span>
-            <span style={{ color: '#334155', fontSize: '16px', lineHeight: '1.8', flex: 1 }}>{renderTextWithBold(trimmed.substring(2))}</span>
+            <span style={{ color: '#334155', fontSize: '16px', lineHeight: '1.8', flex: 1, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{renderTextWithBold(trimmed.substring(2))}</span>
           </div>
         );
         continue;
       }
 
-      // 5. NUMARALI MADDELER (Özel Yuvarlak Rozet Tasarımı)
       const numberedListMatch = trimmed.match(/^(\d+)\.\s(.*)/);
       if (numberedListMatch) {
         elements.push(
@@ -151,15 +143,14 @@ export default function ArticleDetail() {
             <span style={{ backgroundColor: '#e2e8f0', color: '#0f172a', fontWeight: 'bold', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', marginRight: '12px', fontSize: '12px', flexShrink: 0, marginTop: '2px' }}>
               {numberedListMatch[1]}
             </span>
-            <span style={{ color: '#334155', fontSize: '16px', lineHeight: '1.8', flex: 1 }}>{renderTextWithBold(numberedListMatch[2])}</span>
+            <span style={{ color: '#334155', fontSize: '16px', lineHeight: '1.8', flex: 1, overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{renderTextWithBold(numberedListMatch[2])}</span>
           </div>
         );
         continue;
       }
 
-      // Normal Paragraf
       elements.push(
-        <p key={`p-${i}`} style={{ color: '#334155', fontSize: '16px', lineHeight: '1.8', marginBottom: '12px' }}>
+        <p key={`p-${i}`} style={{ color: '#334155', fontSize: '16px', lineHeight: '1.8', marginBottom: '12px', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
           {renderTextWithBold(trimmed)}
         </p>
       );
@@ -182,7 +173,7 @@ export default function ArticleDetail() {
         <span style={{ backgroundColor: '#10b981', color: 'white', padding: '6px 12px', borderRadius: '4px', fontSize: '13px', fontWeight: 'bold' }}>{article.topic}</span>
       </div>
 
-      <h1 style={{ color: '#004170', fontSize: '32px', marginTop: 0, marginBottom: '25px', lineHeight: '1.3', textAlign: 'left' }}>{article.title}</h1>
+      <h1 style={{ color: '#004170', fontSize: '32px', marginTop: 0, marginBottom: '25px', lineHeight: '1.3', textAlign: 'left', overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{article.title}</h1>
 
       <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '25px' }}>
         {renderFormattedContent(article.content)}
