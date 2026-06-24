@@ -7,23 +7,25 @@ export default function ArticleCard({ item }) {
     return text.length > 120 ? text.substring(0, 120) + "..." : text;
   };
 
-  // Kategoriye Göre Dinamik Renk ve İkon Teması Belirleme
   const isHizmetIci = item.category === 'Hizmet İçi Eğitim';
   const isSunum = item.category === 'Sunumlar & İnfografikler';
+  const isOkul = item.category === 'Okul Eğitimleri';
 
   const theme = isHizmetIci ? {
     border: '#10b981', bg: '#ecfdf5', badgeBg: '#059669', badgeText: 'white', icon: '👨‍⚕️'
   } : isSunum ? {
     border: '#f59e0b', bg: '#fffbeb', badgeBg: '#d97706', badgeText: 'white', icon: '📊'
-  } : { // Varsayılan: Halk Eğitimi
+  } : isOkul ? {
+    border: '#8b5cf6', bg: '#f5f3ff', badgeBg: '#6d28d9', badgeText: 'white', icon: '📚'
+  } : {
     border: '#3b82f6', bg: '#eff6ff', badgeBg: '#2563eb', badgeText: 'white', icon: '👥'
   };
 
   return (
     <div style={{
       backgroundColor: '#ffffff',
-      border: `1px solid ${theme.border}`, // Sınır rengi kategoriye göre
-      borderTop: `5px solid ${theme.border}`, // Üst şerit rengi
+      border: `1px solid ${theme.border}`, 
+      borderTop: `5px solid ${theme.border}`, 
       borderRadius: '8px',
       boxShadow: '0 4px 6px rgba(0,0,0,0.05)',
       display: 'flex',
@@ -33,7 +35,6 @@ export default function ArticleCard({ item }) {
       overflow: 'hidden'
     }}>
       
-      {/* ÜST GÖRSEL/FOTOĞRAF ALANI */}
       <div style={{ height: '140px', backgroundColor: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', borderBottom: '1px solid #e2e8f0' }}>
         {item.imageUrl ? (
           <img src={item.imageUrl} alt={item.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -43,7 +44,6 @@ export default function ArticleCard({ item }) {
       </div>
 
       <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-        {/* Etiketler */}
         <div style={{ display: 'flex', gap: '8px', marginBottom: '15px', flexWrap: 'wrap' }}>
           <span style={{ backgroundColor: theme.badgeBg, color: theme.badgeText, padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>{item.category}</span>
           <span style={{ backgroundColor: '#e2e8f0', color: '#475569', padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold' }}>{item.topic}</span>

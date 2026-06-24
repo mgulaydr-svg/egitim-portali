@@ -179,6 +179,7 @@ export default function Admin() {
               <select value={category} onChange={e => setCategory(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
                 <option value="Halk Eğitimi">Halk Eğitimi</option>
                 <option value="Hizmet İçi Eğitim">Hizmet İçi Eğitim</option>
+                <option value="Okul Eğitimleri">Okul Eğitimleri</option>
                 <option value="Sunumlar & İnfografikler">Sunumlar & İnfografikler</option>
               </select>
             </div>
