@@ -1,6 +1,6 @@
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
+import { getAuth } from "firebase/auth"; // Bunu ekledik
 const firebaseConfig = {
     apiKey: "AIzaSyDs2tv4gCZ0gjDBDcP1-L4iz-lheWJpJdc",
     authDomain: "egitim-portali-432a0.firebaseapp.com",
@@ -11,5 +11,5 @@ const firebaseConfig = {
     measurementId: "G-BJPW46YC95"
 };
 const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
 export const db = getFirestore(app);
+export const auth = getAuth(app); // Bunu ekledik
