@@ -26,75 +26,146 @@ export default function ArticleDetail() {
     fetchArticle();
   }, [id]);
 
-  // Metindeki Markdown ve HTML öğelerini şık elementlere dönüştüren fonksiyon
+  // Yeni ve Akıllı Metin Dönüştürücü
   const renderFormattedContent = (rawText) => {
     if (!rawText) return "";
 
-    // Adım 1: Satırları ayır ve işle
     const lines = rawText.split('\n');
+    const elements = [];
+    let inAside = false;
+    let asideContent = [];
     let inTable = false;
     let tableRows = [];
 
-    const processedBlocks = lines.map((line, index) => {
+    // Koyu (Bold) yazıları algılayan yardımcı fonksiyon
+    const renderTextWithBold = (text) => {
+      if (!text.includes('**')) return text;
+      const parts = text.split(/(\*\*.*?\*\*)/g);
+      return parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return <strong key={i} style={{ color: '#0f172a', fontWeight: '800' }}>{part.slice(2, -2)}</strong>;
+        }
+        return part;
+      });
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
       const trimmed = line.trim();
 
-      // H2 Başlık Kontrolü (## Başlık)
-      if (trimmed.startsWith('## ')) {
-        return <h2 key={index} style={{ color: '#004170', marginTop: '30px', marginBottom: '15px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px', textAlign: 'left' }}>{trimmed.replace('## ', '')}</h2>;
+      // 1. KUTU (ASIDE) MANTIĞI: Kutunun içindeki her şeyi biriktir
+      if (trimmed === '<aside>') {
+        inAside = true;
+        asideContent = [];
+        continue;
       }
-
-      // H3 Başlık Kontrolü (### Başlık)
-      if (trimmed.startsWith('### ')) {
-        return <h3 key={index} style={{ color: '#0f766e', marginTop: '20px', marginBottom: '10px', textAlign: 'left' }}>{trimmed.replace('### ', '')}</h3>;
-      }
-
-      // Callout / Aside Kutusu Kontrolü (<aside> veya </aside>)
-      if (trimmed.startsWith('<aside>') || trimmed.startsWith('</aside>')) {
-        return null; // Etiket satırlarını temizle
-      }
-
-      // Eğer satır callout içindeki bir emoji veya özel madde ise şık kutuya çevir
-      if (trimmed.startsWith('1️⃣') || trimmed.startsWith('2️⃣') || trimmed.startsWith('3️⃣') || trimmed.startsWith('⚠️') || trimmed.startsWith('💧') || trimmed.startsWith('🍬') || trimmed.startsWith('⭐') || trimmed.startsWith('🛡️')) {
-        return (
-          <div key={index} style={{ backgroundColor: '#f8fafc', borderLeft: '4px solid #10b981', padding: '15px 20px', borderRadius: '0 8px 8px 0', margin: '20px 0', color: '#334155', fontSize: '15px', lineHeight: '1.6', textAlign: 'left' }}>
-            {trimmed}
+      if (trimmed === '</aside>') {
+        inAside = false;
+        elements.push(
+          <div key={`aside-${i}`} style={{ backgroundColor: '#f0fdf4', borderLeft: '5px solid #10b981', padding: '20px', borderRadius: '0 8px 8px 0', margin: '25px 0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+            {asideContent.map((aLine, aIdx) => {
+              if(aLine.trim() === '') return <div key={`asc-${aIdx}`} style={{height: '10px'}} />;
+              return (
+                <div key={`ast-${aIdx}`} style={{ color: '#166534', fontSize: '15px', lineHeight: '1.7', marginBottom: '8px' }}>
+                  {renderTextWithBold(aLine)}
+                </div>
+              )
+            })}
           </div>
         );
+        continue;
+      }
+      if (inAside) {
+        asideContent.push(trimmed);
+        continue;
       }
 
-      // Tablo Satır Kontrolü (| hücre | hücre |)
+      // 2. TABLO MANTIĞI
       if (trimmed.startsWith('|')) {
-        if (trimmed.includes('---')) return null; // Tablo çizgisini atla
-        
-        const cells = trimmed.split('|').map(c => c.trim()).filter(c => c !== '');
-        const isHeader = index === lines.findIndex(l => l.trim().startsWith('|')); // İlk satırı başlık yap
-        
-        return (
-          <tr key={index} style={{ backgroundColor: isHeader ? '#f1f5f9' : 'white', borderBottom: '1px solid #e2e8f0' }}>
-            {cells.map((cell, cIdx) => (
-              <td key={cIdx} style={{ padding: '12px', fontWeight: isHeader ? 'bold' : 'normal', color: '#334155', border: '1px solid #e2e8f0' }}>
-                {cell}
-              </td>
-            ))}
-          </tr>
-        );
+        if (!inTable) {
+          inTable = true;
+          tableRows = [];
+        }
+        if (!trimmed.includes('---')) {
+          tableRows.push(trimmed);
+        }
+        if (i === lines.length - 1 || !lines[i + 1].trim().startsWith('|')) {
+          inTable = false;
+          elements.push(
+            <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '30px 0', borderRadius: '8px', boxShadow: '0 0 0 1px #e2e8f0' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', backgroundColor: 'white' }}>
+                <tbody>
+                  {tableRows.map((row, rIdx) => {
+                    const cells = row.split('|').map(c => c.trim()).filter(c => c !== '');
+                    const isHeader = rIdx === 0;
+                    return (
+                      <tr key={`tr-${rIdx}`} style={{ backgroundColor: isHeader ? '#f8fafc' : 'white', borderBottom: '1px solid #e2e8f0' }}>
+                        {cells.map((cell, cIdx) => (
+                          <td key={`td-${cIdx}`} style={{ padding: '14px 16px', fontWeight: isHeader ? 'bold' : 'normal', color: isHeader ? '#0f172a' : '#334155', borderRight: cIdx !== cells.length - 1 ? '1px solid #e2e8f0' : 'none' }}>
+                            {renderTextWithBold(cell)}
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+        continue;
       }
 
-      // Standart Paragraf ve Liste Maddeleri
-      if (trimmed === '') return <div key={index} style={{ height: '10px' }} />;
-      
-      return (
-        <p key={index} style={{ color: '#334155', fontSize: '16px', lineHeight: '1.8', marginBottom: '15px', textAlign: 'left' }}>
-          {trimmed.startsWith('- ') ? '• ' + trimmed.substring(2) : trimmed}
+      // Boş satırlar
+      if (trimmed === '') {
+        elements.push(<div key={`space-${i}`} style={{ height: '12px' }} />);
+        continue;
+      }
+
+      // 3. BAŞLIKLAR
+      if (trimmed.startsWith('## ')) {
+        elements.push(<h2 key={`h2-${i}`} style={{ color: '#004170', marginTop: '35px', marginBottom: '15px', borderBottom: '2px solid #e2e8f0', paddingBottom: '8px', fontSize: '24px' }}>{renderTextWithBold(trimmed.replace('## ', ''))}</h2>);
+        continue;
+      }
+      if (trimmed.startsWith('### ')) {
+        elements.push(<h3 key={`h3-${i}`} style={{ color: '#0f766e', marginTop: '25px', marginBottom: '12px', fontSize: '20px' }}>{renderTextWithBold(trimmed.replace('### ', ''))}</h3>);
+        continue;
+      }
+
+      // 4. ÇİZGİLİ MADDELER (Özel Bullet Point Tasarımı)
+      if (trimmed.startsWith('- ')) {
+        elements.push(
+          <div key={`ul-${i}`} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '10px' }}>
+            <span style={{ color: '#10b981', marginRight: '12px', fontSize: '20px', lineHeight: '1.4' }}>•</span>
+            <span style={{ color: '#334155', fontSize: '16px', lineHeight: '1.8', flex: 1 }}>{renderTextWithBold(trimmed.substring(2))}</span>
+          </div>
+        );
+        continue;
+      }
+
+      // 5. NUMARALI MADDELER (Özel Yuvarlak Rozet Tasarımı)
+      const numberedListMatch = trimmed.match(/^(\d+)\.\s(.*)/);
+      if (numberedListMatch) {
+        elements.push(
+          <div key={`ol-${i}`} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '10px' }}>
+            <span style={{ backgroundColor: '#e2e8f0', color: '#0f172a', fontWeight: 'bold', width: '24px', height: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', marginRight: '12px', fontSize: '12px', flexShrink: 0, marginTop: '2px' }}>
+              {numberedListMatch[1]}
+            </span>
+            <span style={{ color: '#334155', fontSize: '16px', lineHeight: '1.8', flex: 1 }}>{renderTextWithBold(numberedListMatch[2])}</span>
+          </div>
+        );
+        continue;
+      }
+
+      // Normal Paragraf
+      elements.push(
+        <p key={`p-${i}`} style={{ color: '#334155', fontSize: '16px', lineHeight: '1.8', marginBottom: '12px' }}>
+          {renderTextWithBold(trimmed)}
         </p>
       );
-    });
+    }
 
-    return (
-      <div style={{ width: '100%' }}>
-        {processedBlocks}
-      </div>
-    );
+    return <div style={{ width: '100%' }}>{elements}</div>;
   };
 
   if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#004170', fontWeight: 'bold' }}>İçerik yükleniyor...</div>;
