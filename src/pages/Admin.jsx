@@ -30,7 +30,7 @@ export default function Admin() {
   const [currentImageUrl, setCurrentImageUrl] = useState(''); 
 
   // KENDİ YETKİLİ ADRESİNİ YAZ
-  const adminEmail = "senin-gmail-adresin@gmail.com";
+  const adminEmail = "mgulaydr@gmail.com";
 
   useEffect(() => {
     // Yönlendirme dönüşünü yakala ve girişi tamamla
