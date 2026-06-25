@@ -22,85 +22,90 @@ export default function Navbar() {
 
   return (
     <>
-      {/* CSS STİLLERİ (Mobil uyumluluk ve animasyonlar için) */}
       <style>{`
-        .header-container { background-color: #004170; color: white; padding: 20px 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); position: relative; z-index: 50; }
-        .header-top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 20px; }
-        .header-brand { display: flex; align-items: center; gap: 15px; text-decoration: none; color: white; }
-        .header-logo { width: 70px; height: 70px; object-fit: contain; background-color: white; border-radius: 50%; padding: 4px; }
-        .header-titles { display: flex; flex-direction: column; }
-        .brand-title { font-size: 26px; font-weight: 900; margin: 0; letter-spacing: 0.5px; }
-        .brand-subtitle { font-size: 16px; color: #94a3b8; margin: 0; font-weight: 500; letter-spacing: 1px; }
+        .navbar-wrapper { width: 100%; }
         
-        .header-info { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+        /* 1. KATMAN: KOYU RENKLİ ÜST BİLGİ ALANI */
+        .top-header { background-color: #004170; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; position: relative; z-index: 50; }
+        .brand-area { display: flex; align-items: center; gap: 15px; text-decoration: none; color: white; }
+        .header-logo { width: 70px; height: 70px; object-fit: contain; background-color: white; border-radius: 50%; padding: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        
+        /* ESTİ BİRAZ YAZILARI AYNI RENK VE OKUNAKLI */
+        .brand-titles { display: flex; flex-direction: column; }
+        .brand-title { font-size: 30px; font-weight: 900; margin: 0; color: #ffffff; letter-spacing: 0.5px; }
+        .brand-subtitle { font-size: 17px; font-weight: 600; margin: 0; color: #ffffff; letter-spacing: 1px; }
+        
+        .info-area { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
         .info-row { display: flex; gap: 15px; font-size: 13px; color: #cbd5e1; font-weight: 500; }
         .admin-btn { background-color: #10b981; color: white; padding: 6px 16px; border-radius: 4px; text-decoration: none; font-weight: bold; font-size: 13px; transition: background 0.2s; }
         .admin-btn:hover { background-color: #059669; }
 
-        .nav-boxes { display: flex; gap: 15px; padding-top: 20px; flex-wrap: wrap; justify-content: center; }
-        .nav-box { flex: 1; min-width: 180px; background-color: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 15px; text-decoration: none; color: white; transition: all 0.3s; display: flex; flex-direction: column; gap: 5px; }
-        .nav-box:hover { background-color: rgba(255,255,255,0.1); transform: translateY(-2px); border-color: rgba(255,255,255,0.3); }
-        .nav-box-title { font-size: 15px; font-weight: bold; display: flex; align-items: center; gap: 8px; }
-        .nav-box-desc { font-size: 11px; color: #94a3b8; line-height: 1.4; }
+        /* 2. KATMAN: BEYAZ NAVİGASYON ALANI */
+        .bottom-nav { background-color: #ffffff; padding: 25px 30px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; gap: 15px; justify-content: center; align-items: center; position: relative; z-index: 40; border-bottom: 1px solid #e2e8f0; }
+        
+        /* 5 BUTON YAN YANA (Alta kaymasını engelleyen flex ayarı) */
+        .nav-box { flex: 1; max-width: 210px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; text-decoration: none; color: #334155; transition: all 0.3s; display: flex; flex-direction: column; gap: 6px; border-top-width: 4px; border-top-style: solid; }
+        .nav-box:hover { background-color: #ffffff; transform: translateY(-4px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-color: #cbd5e1; }
+        .nav-box-title { font-size: 14px; font-weight: bold; display: flex; align-items: center; gap: 8px; color: #0f172a; }
+        .nav-box-desc { font-size: 11px; color: #64748b; line-height: 1.4; }
 
+        /* YAN MENÜ VE MOBİL (Hamburger) */
         .mobile-toggle { display: none; background: none; border: none; color: white; font-size: 28px; cursor: pointer; }
-        .mobile-sidebar { position: fixed; top: 0; right: -100%; width: 280px; height: 100vh; background-color: #004170; z-index: 100; transition: right 0.3s ease; box-shadow: -5px 0 15px rgba(0,0,0,0.2); padding: 20px; overflow-y: auto; }
+        .mobile-sidebar { position: fixed; top: 0; right: -100%; width: 280px; height: 100vh; background-color: #004170; z-index: 100; transition: right 0.3s ease; box-shadow: -5px 0 15px rgba(0,0,0,0.3); padding: 20px; overflow-y: auto; }
         .mobile-sidebar.open { right: 0; }
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(0,0,0,0.5); z-index: 90; display: none; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(0,0,0,0.5); z-index: 90; display: none; backdrop-filter: blur(2px); }
         .overlay.open { display: block; }
 
-        /* MOBİL UYUMLULUK */
-        @media (max-width: 900px) {
-          .nav-boxes { display: none; }
-          .mobile-toggle { display: block; }
-          .header-info { display: none; }
-          .header-top { border-bottom: none; padding-bottom: 0; }
-          .brand-title { font-size: 22px; }
-          .header-logo { width: 50px; height: 50px; }
+        /* RESPONSIVE: EKRAN KÜÇÜLÜNCE BEYAZ ALANI YOK ET, HAMBURGERİ AÇ */
+        @media (max-width: 1024px) {
+          .bottom-nav { display: none; } /* Dar ekranda beyaz alanı ve butonları tamamen saklar */
+          .mobile-toggle { display: block; } /* Hamburger ikonunu gösterir */
+          .info-area { display: none; } /* Tarih ve ziyaretçi kısmı dar ekranda yan menüye geçer */
+          .brand-title { font-size: 24px; }
+          .brand-subtitle { font-size: 14px; }
+          .header-logo { width: 55px; height: 55px; }
         }
       `}</style>
 
       {/* KARARTMA ARKA PLANI (Mobil menü açıldığında) */}
       <div className={`overlay ${isMobileMenuOpen ? 'open' : ''}`} onClick={() => setIsMobileMenuOpen(false)}></div>
 
-      <header className="header-container">
-        {/* ÜST KISIM: Logo, Başlık ve Bilgiler */}
-        <div className="header-top">
-          <Link to="/" className="header-brand">
-            {/* LOGO BURADAN ÇEKİLİYOR */}
+      <div className="navbar-wrapper">
+        {/* 1. KATMAN: ÜST BİLGİ ALANI */}
+        <header className="top-header">
+          <Link to="/" className="brand-area">
+            {/* LOGO GÖRSELİ */}
             <img src="/logo.png" alt="Esti Biraz Logo" className="header-logo" />
-            <div className="header-titles">
+            <div className="brand-titles">
               <h1 className="brand-title">Esti Biraz</h1>
               <h2 className="brand-subtitle">EĞİTİM PORTALI</h2>
             </div>
           </Link>
 
-          {/* SAĞ KISIM: Tarih, Sayaç ve Admin */}
-          <div className="header-info">
+          <div className="info-area">
             <div className="info-row">
               <span>📅 {currentDate}</span>
               <span>|</span>
-              <span title="Gerçek zamanlı sayaç eklentisi">👁️ 1.245 Ziyaretçi</span>
+              <span title="Temsili Sayaç">👁️ 1.245 Ziyaretçi</span>
             </div>
             <Link to="/admin" className="admin-btn">⚙️ Yönetici Girişi</Link>
           </div>
 
-          {/* MOBİL MENÜ AÇMA BUTONU */}
           <button className="mobile-toggle" onClick={() => setIsMobileMenuOpen(true)}>☰</button>
-        </div>
+        </header>
 
-        {/* MASAÜSTÜ ALT KISIM: Navigasyon Kutucukları */}
-        <div className="nav-boxes">
+        {/* 2. KATMAN: BEYAZ NAVİGASYON ALANI (Geniş Ekran) */}
+        <nav className="bottom-nav">
           {navItems.map((item, idx) => (
-            <Link key={idx} to={item.link} className="nav-box" style={{ borderTop: `3px solid ${item.color}` }}>
+            <Link key={idx} to={item.link} className="nav-box" style={{ borderTopColor: item.color }}>
               <div className="nav-box-title">
                 <span>{item.icon}</span> {item.title}
               </div>
               <div className="nav-box-desc">{item.desc}</div>
             </Link>
           ))}
-        </div>
-      </header>
+        </nav>
+      </div>
 
       {/* MOBİL YAN MENÜ (Sidebar) */}
       <div className={`mobile-sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
