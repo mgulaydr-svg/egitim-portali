@@ -16,7 +16,7 @@ export default function Navbar() {
     { title: "Halk Eğitimi", desc: "Toplum sağlığı materyalleri", link: "/?kategori=Halk Eğitimi", icon: "👥", color: "#3b82f6" },
     { title: "Hizmet İçi Eğitim", desc: "Personel gelişim modülleri", link: "/?kategori=Hizmet İçi Eğitim", icon: "👨‍⚕️", color: "#10b981" },
     { title: "Okul Eğitimleri", desc: "Müfredat ve öğrenci sunumları", link: "/?kategori=Okul Eğitimleri", icon: "📚", color: "#8b5cf6" },
-    { title: "Sunumlar & İnfografikler", desc: "Görsel veri ve analizler", link: `/?kategori=${encodeURIComponent('Sunumlar & İnfografikler')}`, icon: "📊", color: "#0ea5e9" },
+    { title: "Görseller", desc: "Görsel veri ve analizler", link: `/?kategori=${encodeURIComponent('Sunumlar & İnfografikler')}`, icon: "📊", color: "#0ea5e9" },
     { title: "Aktivite Kartları", desc: "Sınıf içi interaktif oyunlar", link: "/?kategori=Aktivite Kartları", icon: "🎲", color: "#ea580c" }
   ];
 
