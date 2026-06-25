@@ -12,7 +12,10 @@ export default function Navbar() {
         <Link to="/?kategori=Halk Eğitimi" style={{ color: '#e2e8f0', textDecoration: 'none', fontWeight: '500', transition: 'color 0.2s' }}>Halk Eğitimi</Link>
         <Link to="/?kategori=Hizmet İçi Eğitim" style={{ color: '#e2e8f0', textDecoration: 'none', fontWeight: '500', transition: 'color 0.2s' }}>Hizmet İçi Eğitim</Link>
         <Link to="/?kategori=Okul Eğitimleri" style={{ color: '#e2e8f0', textDecoration: 'none', fontWeight: '500', transition: 'color 0.2s' }}>Okul Eğitimleri</Link>
-        <Link to="/?kategori=Sunumlar & İnfografikler" style={{ color: '#e2e8f0', textDecoration: 'none', fontWeight: '500', transition: 'color 0.2s' }}>Sunumlar & İnfografikler</Link>
+        
+        {/* HATA BURADAN KAYNAKLANIYORDU, GÜVENLİ URL FORMATINA ÇEVRİLDİ */}
+        <Link to={`/?kategori=${encodeURIComponent('Sunumlar & İnfografikler')}`} style={{ color: '#e2e8f0', textDecoration: 'none', fontWeight: '500', transition: 'color 0.2s' }}>Sunumlar & İnfografikler</Link>
+        
         <Link to="/admin" style={{ backgroundColor: '#10b981', color: 'white', padding: '6px 15px', borderRadius: '4px', textDecoration: 'none', fontWeight: 'bold', marginLeft: '10px' }}>
           Yönetici Girişi
         </Link>
