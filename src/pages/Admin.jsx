@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../services/firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, signOut, getRedirectResult } from 'firebase/auth'; // getRedirectResult eklendi
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth'; // E-posta girişi eklendi
 import { uploadToCloudinary } from '../services/cloudinary';
 
 export default function Admin() {
   const [user, setUser] = useState(null);
   const [articles, setArticles] = useState([]);
   
+  // Giriş State'leri
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+
   // Form State'leri
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -33,17 +37,6 @@ export default function Admin() {
   const adminEmail = "mgulaydr@gmail.com";
 
   useEffect(() => {
-    // Yönlendirme dönüşünü yakala ve girişi tamamla
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          console.log("Giriş başarılı:", result.user);
-        }
-      })
-      .catch((error) => {
-        console.error("Yönlendirme hatası:", error);
-      });
-
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser && currentUser.email === adminEmail) fetchArticles();
@@ -58,6 +51,17 @@ export default function Admin() {
       setArticles(items);
     } catch (error) {
       console.error("Yayınlar çekilemedi:", error);
+    }
+  };
+
+  // YENİ: E-POSTA VE ŞİFRE İLE GİRİŞ FONKSİYONU
+  const handleEmailLogin = async (e) => {
+    e.preventDefault();
+    try {
+      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+    } catch (error) {
+      alert("Giriş başarısız. Lütfen e-posta ve şifrenizi kontrol edin.");
+      console.error(error);
     }
   };
 
@@ -93,7 +97,6 @@ export default function Admin() {
     setCurrentPdfUrl(art.pdfUrl || '');
     setCurrentImageUrl(art.imageUrl || ''); 
     setGallery(art.gallery || []);
-    
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -101,11 +104,6 @@ export default function Admin() {
     setEditingId(null); setTitle(''); setContent(''); setCategory('Halk Eğitimi');
     setTopic(''); setCustomTopic(''); setPdfFile(null); setImageFile(null);
     setCurrentPdfUrl(''); setCurrentImageUrl(''); setGallery([]); setGalleryTag('');
-  };
-
-  const handleGoogleLogin = async () => {
-    const provider = new GoogleAuthProvider();
-    try { await signInWithRedirect(auth, provider); } catch (error) { alert("Giriş başlatılamadı."); }
   };
 
   const handleLogout = () => { signOut(auth); };
@@ -158,7 +156,11 @@ export default function Admin() {
       <div style={{ maxWidth: '400px', margin: '100px auto', backgroundColor: 'white', padding: '40px', borderRadius: '8px', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
         <h2 style={{ color: '#004170', marginBottom: '20px' }}>Yönetici Girişi</h2>
         {!user ? (
-          <button onClick={handleGoogleLogin} style={{ backgroundColor: '#4285F4', color: 'white', padding: '12px 24px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', width: '100%', fontSize: '16px' }}>🌐 Google ile Giriş Yap</button>
+          <form onSubmit={handleEmailLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <input type="email" placeholder="E-Posta Adresiniz" required onChange={e => setLoginEmail(e.target.value)} style={{ padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '15px' }} />
+            <input type="password" placeholder="Şifreniz" required onChange={e => setLoginPassword(e.target.value)} style={{ padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '15px' }} />
+            <button type="submit" style={{ backgroundColor: '#0ea5e9', color: 'white', padding: '12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>Sisteme Giriş Yap</button>
+          </form>
         ) : (
           <div>
             <p style={{ color: '#b91c1c', marginBottom: '20px' }}>⚠️ Yetkisiz Erişim ({user.email})</p>
@@ -183,7 +185,6 @@ export default function Admin() {
             <input type="text" required value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
           </div>
 
-          {/* HEM EĞİTİM TÜRÜ HEM ANA KONU BURADA YAN YANA DURUYOR */}
           <div style={{ display: 'flex', gap: '20px' }}>
             <div style={{ flex: 1 }}>
               <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Eğitim Türü</label>
