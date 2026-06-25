@@ -6,13 +6,17 @@ import ArticleCard from '../components/ArticleCard';
 
 export default function Home() {
   const [articles, setArticles] = useState([]);
-  const [activities, setActivities] = useState([]);
+  const [activities, setActivities] = useState([]); 
   const [searchTerm, setSearchTerm] = useState('');
   const [searchParams] = useSearchParams(); 
   const activeCategory = searchParams.get('kategori');
 
   const [selectedTag, setSelectedTag] = useState('Tümü');
   const [activeModalAct, setActiveModalAct] = useState(null); 
+
+  // YENİ: Sayfalama (Pagination) State'leri
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 9;
 
   useEffect(() => {
     const fetchPortalData = async () => {
@@ -30,18 +34,30 @@ export default function Home() {
     fetchPortalData();
   }, []);
 
+  // AKILLI SIFIRLAMA: Filtreler veya aramalar değiştiğinde otomatik olarak 1. sayfaya dön
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, activeCategory, selectedTag]);
+
+  // Normal makale filtrelemesi
   const filteredArticles = articles.filter(item => {
     const matchesSearch = item.title?.toLowerCase().includes(searchTerm.toLowerCase()) || item.topic?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = activeCategory ? item.category === activeCategory : true;
     return matchesSearch && matchesCategory;
   });
 
+  // YENİ: Sayfalama Hesaplama Motoru (Eğitim/Makale Kartları İçin)
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentArticles = filteredArticles.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredArticles.length / itemsPerPage);
+
+  // Aktivite Süzme ve Etiket Toplama
   let uniqueTags = ['Tümü'];
   activities.forEach(act => { if (act.tag && !uniqueTags.includes(act.tag)) uniqueTags.push(act.tag); });
-
   const filteredActivities = selectedTag === 'Tümü' ? activities : activities.filter(a => a.tag === selectedTag);
 
-  // Modal Süzgeci - TABLO MANTIĞI EKLENDİ
+  // Modal İçi Şık Metin Biçimlendirici Süzgeç
   const renderModalFormattedText = (rawText) => {
     if (!rawText) return "";
     const lines = rawText.split('\n');
@@ -63,7 +79,6 @@ export default function Home() {
       }
       if (inAside) { asideContent.push(trimmed); continue; }
 
-      // TABLO MOTORU EKLENDİ
       if (trimmed.startsWith('|')) {
         if (!inTable) { inTable = true; tableRows = []; }
         if (!trimmed.includes('---')) tableRows.push(trimmed);
@@ -103,6 +118,7 @@ export default function Home() {
     return elements;
   };
 
+  // İnfografikler Sayfası Havuzu
   let allGalleryItems = [];
   let uniqueGalleryTags = ['Tümü'];
   if (activeCategory === 'Sunumlar & İnfografikler') {
@@ -142,6 +158,7 @@ export default function Home() {
       </div>
 
       {activeCategory === 'Aktivite Kartları' ? (
+        /* GÖRÜNÜM: AKTİVİTE KART GRIDI */
         filteredActivities.length === 0 ? (
           <p style={{ textAlign: 'center', color: '#64748b', marginTop: '40px' }}>Seçili etikette aktivite bulunamadı.</p>
         ) : (
@@ -158,13 +175,14 @@ export default function Home() {
                 </div>
                 <div>
                   {act.articleId !== 'none' && <Link to={`/article/${act.articleId}`} style={{ display: 'block', textDecoration: 'none', fontSize: '12px', color: '#0284c7', marginBottom: '10px', fontWeight: '500' }}>📄 {act.articleTitle.substring(0,25)}...</Link>}
-                  <button onClick={() => setActiveModalAct(act)} style={{ width: '100%', backgroundColor: '#ea580c', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', transition: 'background-color 0.2s' }}>Uygulama Adımlarını Aç ➔</button>
+                  <button onClick={() => setActiveModalAct(act)} style={{ width: '100%', backgroundColor: '#ea580c', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}>Uygulama Adımlarını Aç ➔</button>
                 </div>
               </div>
             ))}
           </div>
         )
       ) : activeCategory === 'Sunumlar & İnfografikler' ? (
+        /* İNFOGRAFİK GALERİSİ */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px' }}>
           {filteredGallery.map((img, idx) => (
             <div key={idx} style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
@@ -178,15 +196,66 @@ export default function Home() {
           ))}
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
-          {filteredArticles.map(item => <ArticleCard key={item.id} item={item} />)}
-        </div>
+        /* GÜNCELLENDİ: STANDART KART GÖRÜNÜMÜ VE SAYFALAMA */
+        <>
+          {filteredArticles.length === 0 ? (
+            <p style={{ textAlign: 'center', color: '#64748b', marginTop: '40px' }}>Aramanıza uygun materyal bulunamadı.</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
+              {currentArticles.map(item => <ArticleCard key={item.id} item={item} />)}
+            </div>
+          )}
+
+          {/* SÜLEYMAN SİHİRLİ SAYFALAMA PANELİ */}
+          {totalPages > 1 && (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginTop: '50px', marginBottom: '20px' }}>
+              <button 
+                disabled={currentPage === 1}
+                onClick={() => { setCurrentPage(prev => Math.max(prev - 1, 1)); window.scrollTo({top: 0, behavior: 'smooth'}); }}
+                style={{ padding: '10px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: currentPage === 1 ? '#f1f5f9' : '#ffffff', color: currentPage === 1 ? '#94a3b8' : '#004170', cursor: currentPage === 1 ? 'not-allowed' : 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}
+              >
+                ← Önceki
+              </button>
+              
+              {Array.from({ length: totalPages }, (_, index) => {
+                const pageNum = index + 1;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => { setCurrentPage(pageNum); window.scrollTo({top: 0, behavior: 'smooth'}); }}
+                    style={{
+                      padding: '10px 16px',
+                      borderRadius: '6px',
+                      border: '1px solid',
+                      borderColor: currentPage === pageNum ? '#004170' : '#cbd5e1',
+                      backgroundColor: currentPage === pageNum ? '#004170' : '#ffffff',
+                      color: currentPage === pageNum ? '#ffffff' : '#334155',
+                      cursor: 'pointer',
+                      fontWeight: 'bold',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+
+              <button 
+                disabled={currentPage === totalPages}
+                onClick={() => { setCurrentPage(prev => Math.min(prev + 1, totalPages)); window.scrollTo({top: 0, behavior: 'smooth'}); }}
+                style={{ padding: '10px 16px', borderRadius: '6px', border: '1px solid #cbd5e1', backgroundColor: currentPage === totalPages ? '#f1f5f9' : '#ffffff', color: currentPage === totalPages ? '#94a3b8' : '#004170', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}
+              >
+                Sonraki →
+              </button>
+            </div>
+          )}
+        </>
       )}
 
       {/* DETAY MODALI */}
       {activeModalAct && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-          <div style={{ backgroundColor: 'white', maxWidth: '750px', width: '95%', maxHeight: '85vh', overflowY: 'auto', borderRadius: '12px', padding: '30px', boxSizing: 'border-box', overflowWrap: 'anywhere', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', textAlign: 'left' }}>
+          <div style={{ backgroundColor: 'white', maxWidth: '650px', width: '95%', maxHeight: '85vh', overflowY: 'auto', borderRadius: '12px', padding: '30px', boxSizing: 'border-box', overflowWrap: 'anywhere', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', textAlign: 'left' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #fed7aa', paddingBottom: '15px', marginBottom: '20px' }}>
               <div>
                 <span style={{ backgroundColor: '#fff7ed', color: '#ea580c', padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', border: '1px solid #ffedd5' }}>🎲 {activeModalAct.tag}</span>
