@@ -46,7 +46,7 @@ export default function Footer() {
 
           <a href="https://mgulaydr-svg.github.io/sorularla-calisma/" target="_blank" rel="noreferrer" className="eco-card">
             <div>
-              <img src="/sorularla-logo.jpg" alt="Sorularla Çalışma" className="eco-logo" />
+              <img src="/sorularla-calisma.png" alt="Sorularla Çalışma" className="eco-logo" />
               <div className="eco-name">Sorularla Çalışma</div>
             </div>
             <div className="eco-link-text">İncele ➔</div>
@@ -54,7 +54,7 @@ export default function Footer() {
 
           <a href="https://mgulaydr-svg.github.io/akilli-kartlar/" target="_blank" rel="noreferrer" className="eco-card">
             <div>
-              <img src="/akilli-kartlar-logo.png" alt="Akıllı Kartlar" className="eco-logo" />
+              <img src="/akilli-kartlar.png" alt="Akıllı Kartlar" className="eco-logo" />
               <div className="eco-name">Akıllı Kartlar</div>
             </div>
             <div className="eco-link-text">İncele ➔</div>
