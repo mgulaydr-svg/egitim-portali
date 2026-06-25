@@ -1,24 +1,32 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../services/firebase';
 
 export default function ArticleDetail() {
   const { id } = useParams();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [linkedActivities, setLinkedActivities] = useState([]); // Makaleye bağlı aktiviteler
 
   useEffect(() => {
-    const fetchArticle = async () => {
+    const fetchArticleData = async () => {
       try {
         const docRef = doc(db, "articles", id);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) setArticle(docSnap.data());
+
+        // Bu makaleye bağlı aktiviteleri de çekelim (Hata vermemesi için client-side filtreleme)
+        const actSnap = await getDocs(collection(db, "activities"));
+        const allActs = actSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setLinkedActivities(allActs.filter(a => a.articleId === id));
+
       } catch (error) { console.error(error); } finally { setLoading(false); }
     };
-    fetchArticle();
+    fetchArticleData();
   }, [id]);
 
+  // Akıllı Metin Dönüştürücü Süzgeç (Aktiviteler için de ortak çalışacak)
   const renderFormattedContent = (rawText) => {
     if (!rawText) return "";
     const lines = rawText.split('\n');
@@ -37,12 +45,39 @@ export default function ArticleDetail() {
       if (trimmed === '</aside>') {
         inAside = false;
         elements.push(
-          <div key={`aside-${i}`} style={{ backgroundColor: '#f0fdf4', borderLeft: '5px solid #10b981', padding: '20px', borderRadius: '0 8px 8px 0', margin: '25px 0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-            {asideContent.map((aLine, aIdx) => <div key={`ast-${aIdx}`} style={{ color: '#166534', fontSize: '15px', lineHeight: '1.7', marginBottom: '8px' }}>{renderTextWithBold(aLine)}</div>)}
+          <div key={`aside-${i}`} style={{ backgroundColor: '#f0fdf4', borderLeft: '5px solid #10b981', padding: '20px', borderRadius: '0 8px 8px 0', margin: '25px 0' }}>
+            {asideContent.map((aLine, aIdx) => <div key={`ast-${aIdx}`} style={{ color: '#166534', fontSize: '15px', lineHeight: '1.7', marginBottom: '4px' }}>{renderTextWithBold(aLine)}</div>)}
           </div>
         ); continue;
       }
       if (inAside) { asideContent.push(trimmed); continue; }
+
+      // Tablo Desteği
+      if (trimmed.startsWith('|')) {
+        if (!inTable) { inTable = true; tableRows = []; }
+        if (!trimmed.includes('---')) tableRows.push(trimmed);
+        if (i === lines.length - 1 || !lines[i + 1].trim().startsWith('|')) {
+          inTable = false;
+          elements.push(
+            <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '20px 0', borderRadius: '8px', boxShadow: '0 0 0 1px #e2e8f0' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', backgroundColor: 'white' }}>
+                <tbody>
+                  {tableRows.map((row, rIdx) => {
+                    const cells = row.split('|').map(c => c.trim()).filter(c => c !== '');
+                    const isHeader = rIdx === 0;
+                    return (
+                      <tr key={`tr-${rIdx}`} style={{ backgroundColor: isHeader ? '#f8fafc' : 'white', borderBottom: '1px solid #e2e8f0' }}>
+                        {cells.map((cell, cIdx) => <td key={`td-${cIdx}`} style={{ padding: '12px', fontWeight: isHeader ? 'bold' : 'normal', color: '#334155' }}>{renderTextWithBold(cell)}</td>)}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+        continue;
+      }
 
       const imageMatch = trimmed.match(/^!\[(.*?)\]\((.*?)\)$/);
       if (imageMatch) {
@@ -58,8 +93,14 @@ export default function ArticleDetail() {
       if (trimmed.startsWith('### ')) { elements.push(<h3 key={`h3-${i}`} style={{ color: '#0f766e', marginTop: '25px', marginBottom: '12px', fontSize: '20px' }}>{renderTextWithBold(trimmed.replace('### ', ''))}</h3>); continue; }
       
       if (trimmed === '') { elements.push(<div key={`space-${i}`} style={{ height: '12px' }} />); continue; }
+      
+      // Liste ve Madde İşaretleri
       if (trimmed.startsWith('- ')) {
-        elements.push(<div key={`ul-${i}`} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '10px' }}><span style={{ color: '#10b981', marginRight: '12px', fontSize: '20px' }}>•</span><span style={{ color: '#334155', fontSize: '16px', lineHeight: '1.8', flex: 1 }}>{renderTextWithBold(trimmed.substring(2))}</span></div>); continue;
+        elements.push(<div key={`ul-${i}`} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '8px' }}><span style={{ color: '#ea580c', marginRight: '12px', fontSize: '18px' }}>•</span><span style={{ color: '#334155', fontSize: '16px', lineHeight: '1.6', flex: 1 }}>{renderTextWithBold(trimmed.substring(2))}</span></div>); continue;
+      }
+      const numberedListMatch = trimmed.match(/^(\d+)\.\s(.*)/);
+      if (numberedListMatch) {
+        elements.push(<div key={`ol-${i}`} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '8px' }}><span style={{ backgroundColor: '#ea580c', color: 'white', fontWeight: 'bold', width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', marginRight: '12px', fontSize: '12px', flexShrink: 0 }}>{numberedListMatch[1]}</span><span style={{ color: '#334155', fontSize: '16px', lineHeight: '1.6', flex: 1 }}>{renderTextWithBold(numberedListMatch[2])}</span></div>); continue;
       }
 
       elements.push(<p key={`p-${i}`} style={{ color: '#334155', fontSize: '16px', lineHeight: '1.8', marginBottom: '12px' }}>{renderTextWithBold(trimmed)}</p>);
@@ -67,7 +108,7 @@ export default function ArticleDetail() {
     return <div style={{ width: '100%' }}>{elements}</div>;
   };
 
-  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#004170' }}>İçerik yükleniyor...</div>;
+  if (loading) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#004170' }}>Yükleniyor...</div>;
   if (!article) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#b91c1c' }}>İçerik bulunamadı.</div>;
 
   return (
@@ -79,23 +120,30 @@ export default function ArticleDetail() {
 
       {article.pdfUrl && (
         <div style={{ backgroundColor: '#f0fdf4', padding: '20px', borderRadius: '6px', border: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '40px' }}>
-          <div><h4 style={{ margin: 0, color: '#14532d' }}>Ek Kaynak Bulunuyor</h4></div>
-          <button onClick={() => window.open(article.pdfUrl, '_blank')} style={{ backgroundColor: '#16a34a', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>📥 PDF Sunumunu Aç</button>
+          <div><h4 style={{ margin: 0, color: '#14532d' }}>Bu Eğitime Ait Ek Sunum Dosyası</h4></div>
+          <button onClick={() => window.open(article.pdfUrl, '_blank')} style={{ backgroundColor: '#16a34a', color: 'white', border: 'none', padding: '12px 24px', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>📥 Sunumu Görüntüle</button>
         </div>
       )}
 
-      {/* YENİ: GALERİ ALANI */}
-      {article.gallery && article.gallery.length > 0 && (
-        <div style={{ marginTop: '50px', paddingTop: '30px', borderTop: '2px dashed #cbd5e1' }}>
-          <h3 style={{ color: '#0f766e', marginBottom: '20px' }}>🖼️ İlgili İnfografikler ve Görseller</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
-            {article.gallery.map((img, idx) => (
-              <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
-                <a href={img.url} target="_blank" rel="noreferrer">
-                  <img src={img.url} alt={img.tag} style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} />
-                </a>
-                <div style={{ backgroundColor: '#f8fafc', padding: '10px', textAlign: 'center', fontSize: '13px', color: '#475569', fontWeight: 'bold' }}>
-                  🏷️ {img.tag}
+      {/* YENİ: MAKALEYE BAĞLI AKTİVİTE KARTLARI */}
+      {linkedActivities.length > 0 && (
+        <div style={{ marginTop: '60px', paddingTop: '30px', borderTop: '3px solid #ea580c' }}>
+          <h2 style={{ color: '#ea580c', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>🎲 Bu Eğitime Ait Uygulamalı Aktiviteler</h2>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+            {linkedActivities.map(act => (
+              <div key={act.id} style={{ backgroundColor: '#fff7ed', border: '2px dashed #fb923c', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
+                  <h3 style={{ color: '#9a3412', margin: 0 }}>{act.title}</h3>
+                  <span style={{ backgroundColor: '#ea580c', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>🏷️ {act.tag}</span>
+                </div>
+                <p style={{ color: '#78350f', fontWeight: '500', margin: '0 0 20px 0', borderBottom: '1px solid #fed7aa', paddingBottom: '10px' }}>🎯 <strong>Amacı:</strong> {act.purpose}</p>
+                <div style={{ marginBottom: '20px' }}>
+                  <h4 style={{ color: '#c2410c', margin: '0 0 8px 0' }}>📦 Ön Hazırlık ve Materyaller</h4>
+                  <div>{renderFormattedContent(act.prepList)}</div>
+                </div>
+                <div>
+                  <h4 style={{ color: '#c2410c', margin: '0 0 8px 0' }}>🚀 Adım Adım Uygulama Rehberi</h4>
+                  <div>{renderFormattedContent(act.steps)}</div>
                 </div>
               </div>
             ))}

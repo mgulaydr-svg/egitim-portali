@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../services/firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth'; // E-posta girişi eklendi
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from 'firebase/auth';
 import { uploadToCloudinary } from '../services/cloudinary';
 
 export default function Admin() {
   const [user, setUser] = useState(null);
   const [articles, setArticles] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [adminTab, setAdminTab] = useState('article'); // 'article' veya 'activity' formu ayırıcı
   
   // Giriş State'leri
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
-  // Form State'leri
+  // Form State'leri (Eğitim Materyali)
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [category, setCategory] = useState('Halk Eğitimi');
@@ -22,13 +24,20 @@ export default function Admin() {
   const [imageFile, setImageFile] = useState(null);
   const [uploading, setUploading] = useState(false);
 
+  // Form State'leri (Aktivite Kartı)
+  const [actTitle, setActTitle] = useState('');
+  const [actArticleId, setActArticleId] = useState('none');
+  const [actPurpose, setActPurpose] = useState('');
+  const [actPrep, setActPrep] = useState('');
+  const [actSteps, setActSteps] = useState('');
+  const [actTag, setActTag] = useState('');
+
   // Galeri State'leri
   const [gallery, setGallery] = useState([]); 
   const [galleryFile, setGalleryFile] = useState(null);
   const [galleryTag, setGalleryTag] = useState('');
   const [uploadingGallery, setUploadingGallery] = useState(false);
 
-  // Düzenleme (Edit) State'leri
   const [editingId, setEditingId] = useState(null);
   const [currentPdfUrl, setCurrentPdfUrl] = useState(''); 
   const [currentImageUrl, setCurrentImageUrl] = useState(''); 
@@ -39,7 +48,10 @@ export default function Admin() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser && currentUser.email === adminEmail) fetchArticles();
+      if (currentUser && currentUser.email === adminEmail) {
+        fetchArticles();
+        fetchActivities();
+      }
     });
     return () => unsubscribe();
   }, []);
@@ -47,21 +59,49 @@ export default function Admin() {
   const fetchArticles = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, "articles"));
-      const items = querySnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-      setArticles(items);
-    } catch (error) {
-      console.error("Yayınlar çekilemedi:", error);
-    }
+      setArticles(querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (error) { console.error(error); }
   };
 
-  // YENİ: E-POSTA VE ŞİFRE İLE GİRİŞ FONKSİYONU
+  const fetchActivities = async () => {
+    try {
+      const querySnapshot = await getDocs(collection(db, "activities"));
+      setActivities(querySnapshot.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (error) { console.error(error); }
+  };
+
   const handleEmailLogin = async (e) => {
     e.preventDefault();
+    try { await signInWithEmailAndPassword(auth, loginEmail, loginPassword); } catch (error) { alert("Giriş başarısız."); }
+  };
+
+  // AKTİVİTE KARTINI KAYDETME MOTORU
+  const handleSaveActivity = async (e) => {
+    e.preventDefault();
+    setUploading(true);
     try {
-      await signInWithEmailAndPassword(auth, loginEmail, loginPassword);
+      // İlişkili makalenin adını bulalım
+      const relatedArt = articles.find(a => a.id === actArticleId);
+      const articleTitle = relatedArt ? relatedArt.title : 'Bağımsız / Genel';
+
+      await addDoc(collection(db, "activities"), {
+        title: actTitle,
+        articleId: actArticleId,
+        articleTitle: articleTitle,
+        purpose: actPurpose,
+        prepList: actPrep,
+        steps: actSteps,
+        tag: actTag || 'Genel',
+        createdAt: new Date()
+      });
+
+      alert("Aktivite Kartı başarıyla eklendi!");
+      setActTitle(''); setActPurpose(''); setActPrep(''); setActSteps(''); setActTag('');
+      fetchActivities();
     } catch (error) {
-      alert("Giriş başarısız. Lütfen e-posta ve şifrenizi kontrol edin.");
-      console.error(error);
+      alert("Aktivite eklenirken hata oluştu.");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -71,31 +111,16 @@ export default function Admin() {
     try {
       const url = await uploadToCloudinary(galleryFile);
       setGallery([...gallery, { url, tag: galleryTag || 'Genel' }]);
-      setGalleryFile(null);
-      setGalleryTag('');
-      document.getElementById('galleryInput').value = '';
-    } catch (error) {
-      alert("Galeriye görsel yüklenirken hata oluştu.");
-    } finally {
-      setUploadingGallery(false);
-    }
-  };
-
-  const removeGalleryImage = (index) => {
-    const newGallery = [...gallery];
-    newGallery.splice(index, 1);
-    setGallery(newGallery);
+      setGalleryFile(null); setGalleryTag('');
+    } catch (error) { alert("Hata oluştu."); } finally { setUploadingGallery(false); }
   };
 
   const handleEditSelect = (art) => {
+    setAdminTab('article');
     setEditingId(art.id);
-    setTitle(art.title || '');
-    setContent(art.content || '');
-    setCategory(art.category || 'Halk Eğitimi');
-    setTopic(art.topic || '');
-    setCustomTopic('');
-    setCurrentPdfUrl(art.pdfUrl || '');
-    setCurrentImageUrl(art.imageUrl || ''); 
+    setTitle(art.title || ''); setContent(art.content || '');
+    setCategory(art.category || 'Halk Eğitimi'); setTopic(art.topic || '');
+    setCurrentPdfUrl(art.pdfUrl || ''); setCurrentImageUrl(art.imageUrl || ''); 
     setGallery(art.gallery || []);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -103,179 +128,177 @@ export default function Admin() {
   const handleCancelEdit = () => {
     setEditingId(null); setTitle(''); setContent(''); setCategory('Halk Eğitimi');
     setTopic(''); setCustomTopic(''); setPdfFile(null); setImageFile(null);
-    setCurrentPdfUrl(''); setCurrentImageUrl(''); setGallery([]); setGalleryTag('');
+    setCurrentPdfUrl(''); setCurrentImageUrl(''); setGallery([]);
   };
 
-  const handleLogout = () => { signOut(auth); };
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    setUploading(true);
-    try {
-      let uploadedPdfUrl = currentPdfUrl;
-      let uploadedImageUrl = currentImageUrl;
-
-      if (pdfFile) uploadedPdfUrl = await uploadToCloudinary(pdfFile);
-      if (imageFile) uploadedImageUrl = await uploadToCloudinary(imageFile);
-      
-      const articleData = {
-        title, content, category, topic: customTopic || topic || 'Genel',
-        pdfUrl: uploadedPdfUrl, imageUrl: uploadedImageUrl,
-        gallery: gallery,
-        updatedAt: new Date()
-      };
-
-      if (editingId) {
-        await updateDoc(doc(db, "articles", editingId), articleData);
-        alert("İçerik başarıyla güncellendi!");
-      } else {
-        await addDoc(collection(db, "articles"), { ...articleData, createdAt: new Date() });
-        alert("İçerik başarıyla yayınlandı!");
-      }
-
-      handleCancelEdit(); fetchArticles(); 
-    } catch (error) {
-      alert("İşlem sırasında hata oluştu.");
-    } finally {
-      setUploading(false);
+  const handleDeleteArticle = async (id) => {
+    if (window.confirm("Bu materyali silmek istediğinize emin misiniz?")) {
+      await deleteDoc(doc(db, "articles", id)); fetchArticles();
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm("Bu materyali silmek istediğinize emin misiniz?")) {
-      try {
-        await deleteDoc(doc(db, "articles", id));
-        if(editingId === id) handleCancelEdit();
-        fetchArticles(); 
-      } catch (error) { alert("Silme işlemi başarısız."); }
+  const handleDeleteActivity = async (id) => {
+    if (window.confirm("Bu aktivite kartını silmek istediğinize emin misiniz?")) {
+      await deleteDoc(doc(db, "activities", id)); fetchActivities();
     }
   };
 
   if (!user || user.email !== adminEmail) {
     return (
       <div style={{ maxWidth: '400px', margin: '100px auto', backgroundColor: 'white', padding: '40px', borderRadius: '8px', textAlign: 'center', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-        <h2 style={{ color: '#004170', marginBottom: '20px' }}>Yönetici Girişi</h2>
-        {!user ? (
-          <form onSubmit={handleEmailLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
-            <input type="email" placeholder="E-Posta Adresiniz" required onChange={e => setLoginEmail(e.target.value)} style={{ padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '15px' }} />
-            <input type="password" placeholder="Şifreniz" required onChange={e => setLoginPassword(e.target.value)} style={{ padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '15px' }} />
-            <button type="submit" style={{ backgroundColor: '#0ea5e9', color: 'white', padding: '12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>Sisteme Giriş Yap</button>
-          </form>
-        ) : (
-          <div>
-            <p style={{ color: '#b91c1c', marginBottom: '20px' }}>⚠️ Yetkisiz Erişim ({user.email})</p>
-            <button onClick={handleLogout} style={{ backgroundColor: '#475569', color: 'white', padding: '10px 20px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Çıkış Yap</button>
-          </div>
-        )}
+        <h2>Yönetici Girişi</h2>
+        <form onSubmit={handleEmailLogin} style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+          <input type="email" placeholder="E-Posta" required onChange={e => setLoginEmail(e.target.value)} style={{ padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+          <input type="password" placeholder="Şifre" required onChange={e => setLoginPassword(e.target.value)} style={{ padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+          <button type="submit" style={{ backgroundColor: '#0ea5e9', color: 'white', padding: '12px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>Giriş Yap</button>
+        </form>
       </div>
     );
   }
 
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '40px', textAlign: 'left' }}>
-      <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #10b981', paddingBottom: '10px', marginBottom: '30px' }}>
-          <h2 style={{ color: '#004170', margin: 0 }}>{editingId ? '📝 Eğitim Materyalini Düzenle' : 'Yeni Eğitim Materyali Ekle'}</h2>
-          <button onClick={handleLogout} style={{ backgroundColor: '#f1f5f9', border: '1px solid #cbd5e1', padding: '8px 16px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>Güvenli Çıkış</button>
-        </div>
-
-        <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Makale / Sunum Başlığı</label>
-            <input type="text" required value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-          </div>
-
-          <div style={{ display: 'flex', gap: '20px' }}>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Eğitim Türü</label>
-              <select value={category} onChange={e => setCategory(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
-                <option value="Halk Eğitimi">Halk Eğitimi</option>
-                <option value="Hizmet İçi Eğitim">Hizmet İçi Eğitim</option>
-                <option value="Okul Eğitimleri">Okul Eğitimleri</option>
-                <option value="Sunumlar & İnfografikler">Sunumlar & İnfografikler</option>
-              </select>
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Ana Konu</label>
-              <select value={topic} onChange={e => setTopic(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
-                <option value="">-- Konu Seçin --</option>
-                <option value="Sağlık Okuryazarlığı">Sağlık Okuryazarlığı</option>
-                <option value="Salgın Yönetimi">Salgın Yönetimi</option>
-                <option value="İlk Yardım">İlk Yardım</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Farklı Bir Konu Ekle</label>
-            <input type="text" value={customTopic} onChange={e => setCustomTopic(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
-          </div>
-
-          <div>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Eğitim Metni</label>
-            <textarea rows="10" required value={content} onChange={e => setContent(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}></textarea>
-          </div>
-
-          <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '15px', color: '#0f172a' }}>🎨 Makale İçi Görsel Galerisi & İnfografikler</label>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '15px' }}>
-              <input type="file" id="galleryInput" accept="image/*" onChange={e => setGalleryFile(e.target.files[0])} style={{ flex: 1 }} />
-              <input type="text" placeholder="Etiket (Örn: Diyabet, İlkyardım)" value={galleryTag} onChange={e => setGalleryTag(e.target.value)} style={{ padding: '8px', borderRadius: '4px', border: '1px solid #cbd5e1', width: '200px' }} />
-              <button type="button" onClick={handleAddGalleryImage} disabled={uploadingGallery} style={{ backgroundColor: '#0ea5e9', color: 'white', padding: '8px 15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer' }}>
-                {uploadingGallery ? 'Yükleniyor...' : '+ Ekle'}
-              </button>
-            </div>
-
-            {gallery.length > 0 && (
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', marginTop: '15px', borderTop: '1px solid #e2e8f0', paddingTop: '15px' }}>
-                {gallery.map((img, idx) => (
-                  <div key={idx} style={{ position: 'relative', width: '120px', border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
-                    <img src={img.url} alt="gallery" style={{ width: '100%', height: '80px', objectFit: 'cover' }} />
-                    <div style={{ backgroundColor: '#0f172a', color: 'white', fontSize: '11px', padding: '4px', textAlign: 'center' }}>🏷️ {img.tag}</div>
-                    <button type="button" onClick={() => removeGalleryImage(idx)} style={{ position: 'absolute', top: '2px', right: '2px', backgroundColor: 'red', color: 'white', border: 'none', borderRadius: '50%', width: '20px', height: '20px', cursor: 'pointer', fontSize: '10px' }}>X</button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div style={{ backgroundColor: '#eff6ff', padding: '20px', borderRadius: '8px', border: '1px dashed #3b82f6' }}>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#1e3a8a' }}>🖼️ Öne Çıkan Görsel Yükle (Kart Görseli)</label>
-            <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files[0])} style={{ width: '100%' }} />
-          </div>
-
-          <div style={{ backgroundColor: '#f0fdf4', padding: '20px', borderRadius: '8px', border: '1px dashed #10b981' }}>
-            <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: '#14532d' }}>📥 Sunum Yükle (PDF)</label>
-            <input type="file" accept=".pdf" onChange={e => setPdfFile(e.target.files[0])} style={{ width: '100%' }} />
-          </div>
-
-          <div style={{ display: 'flex', gap: '15px' }}>
-            <button type="submit" disabled={uploading} style={{ flex: 1, backgroundColor: uploading ? '#94a3b8' : (editingId ? '#10b981' : '#004170'), color: 'white', padding: '15px', border: 'none', borderRadius: '4px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>
-              {uploading ? 'Yükleniyor...' : (editingId ? 'Değişiklikleri Kaydet' : 'Sisteme Yükle ve Yayınla')}
-            </button>
-            {editingId && <button type="button" onClick={handleCancelEdit} style={{ backgroundColor: '#64748b', color: 'white', padding: '15px 25px', border: 'none', borderRadius: '4px', fontSize: '18px', fontWeight: 'bold', cursor: 'pointer' }}>Vazgeç</button>}
-          </div>
-        </form>
+      
+      {/* FORM SEÇİCİ TABLAR */}
+      <div style={{ display: 'flex', gap: '10px' }}>
+        <button onClick={() => { setAdminTab('article'); handleCancelEdit(); }} style={{ flex: 1, padding: '15px', backgroundColor: adminTab === 'article' ? '#004170' : '#e2e8f0', color: adminTab === 'article' ? 'white' : '#475569', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>📄 Yeni Eğitim Materyali Ekle</button>
+        <button onClick={() => setAdminTab('activity')} style={{ flex: 1, padding: '15px', backgroundColor: adminTab === 'activity' ? '#ea580c' : '#e2e8f0', color: adminTab === 'activity' ? 'white' : '#475569', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>🎲 Yeni Aktivite Kartı Ekle</button>
+        <button onClick={() => signOut(auth)} style={{ backgroundColor: '#64748b', color: 'white', padding: '0 20px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Çıkış</button>
       </div>
 
-      <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
-        <h3 style={{ color: '#004170', borderBottom: '2px solid #3b82f6', paddingBottom: '10px', marginTop: 0, marginBottom: '20px' }}>📁 Mevcut Yayınları Yönet</h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {articles.map(art => (
-            <div key={art.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px', border: '1px solid #e2e8f0', borderRadius: '6px', backgroundColor: '#f8fafc' }}>
-              <div>
-                <h4 style={{ margin: 0, color: '#004170' }}>{art.title}</h4>
-                <span style={{ fontSize: '12px', color: '#64748b', marginRight: '10px' }}>{art.category}</span>
-                <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 'bold' }}>{art.topic}</span>
+      {adminTab === 'article' ? (
+        /* SÜLEYMAN FORM 1: MAKALE/MATERYAL FORMU */
+        <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+          <h2 style={{ color: '#004170', marginTop: 0, marginBottom: '25px' }}>{editingId ? '📝 Materyali Düzenle' : 'Yeni Eğitim Materyali'}</h2>
+          <form onSubmit={async (e) => {
+            e.preventDefault(); setUploading(true);
+            let pUrl = currentPdfUrl, iUrl = currentImageUrl;
+            if (pdfFile) pUrl = await uploadToCloudinary(pdfFile);
+            if (imageFile) iUrl = await uploadToCloudinary(imageFile);
+            const data = { title, content, category, topic: customTopic || topic || 'Genel', pdfUrl: pUrl, imageUrl: iUrl, gallery, updatedAt: new Date() };
+            if (editingId) { await updateDoc(doc(db, "articles", editingId), data); alert("Güncellendi!"); }
+            else { await addDoc(collection(db, "articles"), { ...data, createdAt: new Date() }); alert("Eklendi!"); }
+            handleCancelEdit(); fetchArticles(); setUploading(false);
+          }} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Başlık</label>
+              <input type="text" required value={title} onChange={e => setTitle(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '20px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Eğitim Türü</label>
+                <select value={category} onChange={e => setCategory(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+                  <option value="Halk Eğitimi">Halk Eğitimi</option>
+                  <option value="Hizmet İçi Eğitim">Hizmet İçi Eğitim</option>
+                  <option value="Okul Eğitimleri">Okul Eğitimleri</option>
+                  <option value="Sunumlar & İnfografikler">Sunumlar & İnfografikler</option>
+                </select>
               </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Ana Konu</label>
+                <select value={topic} onChange={e => setTopic(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+                  <option value="">-- Seçin --</option>
+                  <option value="Sağlık Okuryazarlığı">Sağlık Okuryazarlığı</option>
+                  <option value="Salgın Yönetimi">Salgın Yönetimi</option>
+                  <option value="İlk Yardım">İlk Yardım</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Farklı Konu Adı</label>
+              <input type="text" value={customTopic} onChange={e => setCustomTopic(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>İçerik Metni</label>
+              <textarea rows="10" required value={content} onChange={e => setContent(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}></textarea>
+            </div>
+            {/* Galeri Bölümü */}
+            <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '10px' }}>🎨 Galeriye Resim Ekle</label>
               <div style={{ display: 'flex', gap: '10px' }}>
-                <button onClick={() => handleEditSelect(art)} style={{ backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>✏️ Düzenle</button>
-                <button onClick={() => handleDelete(art.id)} style={{ backgroundColor: '#fee2e2', color: '#ef4444', border: '1px solid #fca5a5', padding: '8px 14px', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}>🗑️ Kaldır</button>
+                <input type="file" accept="image/*" onChange={e => setGalleryFile(e.target.files[0])} />
+                <input type="text" placeholder="Etiket" value={galleryTag} onChange={e => setGalleryTag(e.target.value)} style={{ padding: '6px' }} />
+                <button type="button" onClick={handleAddGalleryImage}>{uploadingGallery ? '...' : 'Ekle'}</button>
+              </div>
+            </div>
+            <div style={{ backgroundColor: '#eff6ff', padding: '15px', borderRadius: '6px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>🖼️ Kart Öne Çıkan Görseli</label>
+              <input type="file" accept="image/*" onChange={e => setImageFile(e.target.files[0])} />
+            </div>
+            <div style={{ backgroundColor: '#f0fdf4', padding: '15px', borderRadius: '6px' }}>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>📥 PDF Sunum Belgesi</label>
+              <input type="file" accept=".pdf" onChange={e => setPdfFile(e.target.files[0])} />
+            </div>
+            <button type="submit" disabled={uploading} style={{ backgroundColor: '#004170', color: 'white', padding: '15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>{uploading ? 'Yükleniyor...' : 'Kaydet ve Yayınla'}</button>
+          </form>
+        </div>
+      ) : (
+        /* FORMTYPE 2: AKTİVİTE KARTI FORMU (YENİ) */
+        <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', borderTop: '4px solid #ea580c' }}>
+          <h2 style={{ color: '#ea580c', marginTop: 0, marginBottom: '25px' }}>🎲 Yeni Aktivite Kartı Oluştur</h2>
+          <form onSubmit={handleSaveActivity} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Aktivite / Oyun Adı</label>
+              <input type="text" required value={actTitle} onChange={e => setActTitle(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div style={{ display: 'flex', gap: '20px' }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>İlişkili Eğitim / Makale</label>
+                <select value={actArticleId} onChange={e => setActArticleId(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }}>
+                  <option value="none">-- Hiçbiri / Bağımsız Genel Aktivite --</option>
+                  {articles.map(art => (
+                    <option key={art.id} value={art.id}>{art.title} ({art.category})</option>
+                  ))}
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Bağlam / Süzme Etiketi</label>
+                <input type="text" placeholder="Örn: Isınma Egzersizi, Grup Çalışması, Kutu Oyunu" value={actTag} onChange={e => setActTag(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Aktivitenin Amacı</label>
+              <input type="text" required value={actPurpose} onChange={e => setActPurpose(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+            </div>
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Ön Hazırlık Listesi (Süzgeç destekler - Madde imi, tablo vs.)</label>
+              <textarea rows="5" required value={actPrep} onChange={e => setActPrep(e.target.value)} placeholder="- Gerekli materyaller..." style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}></textarea>
+            </div>
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Adım Adım Uygulama Rehberi (Süzgeç destekler - Madde imi, callout vs.)</label>
+              <textarea rows="8" required value={actSteps} onChange={e => setActSteps(e.target.value)} placeholder="1. Katılımcılar halka olur..." style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}></textarea>
+            </div>
+            <button type="submit" disabled={uploading} style={{ backgroundColor: '#ea580c', color: 'white', padding: '15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>{uploading ? 'Yükleniyor...' : '🎲 Aktivite Kartını Yayınla'}</button>
+          </form>
+        </div>
+      )}
+
+      {/* YÖNETİM ALANI */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ color: '#004170', borderBottom: '2px solid #3b82f6', paddingBottom: '8px', marginTop: 0 }}>📄 Materyalleri Yönet</h3>
+          {articles.map(art => (
+            <div key={art.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: '14px', fontWeight: 'bold' }}>{art.title.substring(0,30)}...</span>
+              <div style={{ display: 'flex', gap: '5px' }}>
+                <button onClick={() => handleEditSelect(art)} style={{ fontSize: '12px', padding: '4px' }}>✏️</button>
+                <button onClick={() => handleDeleteArticle(art.id)} style={{ fontSize: '12px', padding: '4px', color: 'red' }}>🗑️</button>
               </div>
             </div>
           ))}
         </div>
+
+        <div style={{ backgroundColor: 'white', padding: '25px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
+          <h3 style={{ color: '#ea580c', borderBottom: '2px solid #f97316', paddingBottom: '8px', marginTop: 0 }}>🎲 Aktivite Kartlarını Yönet</h3>
+          {activities.map(act => (
+            <div key={act.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #e2e8f0' }}>
+              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#9a3412' }}>{act.title}</span>
+              <button onClick={() => handleDeleteActivity(act.id)} style={{ fontSize: '12px', padding: '4px 8px', color: 'red', border: '1px solid #fee2e2', backgroundColor: '#fef2f2', borderRadius: '4px', cursor: 'pointer' }}>Sil</button>
+            </div>
+          ))}
+        </div>
       </div>
+
     </div>
   );
 }
