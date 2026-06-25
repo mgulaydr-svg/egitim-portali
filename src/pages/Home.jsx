@@ -10,7 +10,7 @@ export default function Home() {
   const [searchParams] = useSearchParams(); 
   const activeCategory = searchParams.get('kategori');
 
-  // Galeri Filtresi İçin
+  // Galeri Etiket Filtresi İçin
   const [selectedTag, setSelectedTag] = useState('Tümü');
 
   useEffect(() => {
@@ -33,12 +33,12 @@ export default function Home() {
     return matchesSearch && matchesCategory;
   });
 
-  // İnfografikler Sayfası için Tüm Galerileri Toplama Motoru
+  // HATA ÇÖZÜMÜ: Tüm yazıların galerilerini tek bir havuzda topluyoruz (Kategori bağımsız)
   let allGalleryItems = [];
   let uniqueTags = ['Tümü'];
 
   if (activeCategory === 'Sunumlar & İnfografikler') {
-    filteredData.forEach(art => {
+    articles.forEach(art => { // BURASI ARTIK TÜM VERİLERİ TARAYACAK
       if (art.gallery && art.gallery.length > 0) {
         art.gallery.forEach(g => {
           allGalleryItems.push({ ...g, articleId: art.id, articleTitle: art.title });
@@ -57,7 +57,6 @@ export default function Home() {
           {activeCategory ? `${activeCategory} Materyalleri` : 'Eğitim Materyalleri ve Araştırma Veritabanı'}
         </h2>
         
-        {/* EĞER İNFOGRAFİKLER SAYFASINDAYSAK ARAMA YERİNE ETİKET FİLTRESİ GÖSTER */}
         {activeCategory === 'Sunumlar & İnfografikler' ? (
           <div style={{ marginTop: '20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px' }}>
             {uniqueTags.map(tag => (
@@ -86,8 +85,8 @@ export default function Home() {
 
       {activeCategory === 'Sunumlar & İnfografikler' ? (
         /* VİTRİN: ETİKETLİ İNFOGRAFİK GALERİSİ */
-        filteredGallery.length === 0 ? (
-          <p style={{ textAlign: 'center', color: '#64748b', marginTop: '40px' }}>Bu etiketle veya kategoride henüz bir görsel bulunmuyor.</p>
+        allGalleryItems.length === 0 ? (
+          <p style={{ textAlign: 'center', color: '#64748b', marginTop: '40px' }}>Sistemdeki makalelere ait henüz bir galeri görseli eklenmemiş.</p>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px' }}>
             {filteredGallery.map((img, idx) => (
