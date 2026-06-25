@@ -8,8 +8,6 @@ export default function ArticleDetail() {
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
   const [linkedActivities, setLinkedActivities] = useState([]);
-  
-  // YENİ: Modal (Açılır Pencere) State'i
   const [activeModalAct, setActiveModalAct] = useState(null);
 
   useEffect(() => {
@@ -140,7 +138,6 @@ export default function ArticleDetail() {
         </div>
       )}
 
-      {/* DÜZENLENDİ: MAKALEYE BAĞLI AKTİVİTELER KART GÖRÜNÜMÜNE ÇEVRİLDİ */}
       {linkedActivities.length > 0 && (
         <div style={{ marginTop: '60px', paddingTop: '30px', borderTop: '3px solid #ea580c' }}>
           <h2 style={{ color: '#ea580c', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>🎲 Bu Eğitime Ait Uygulamalı Aktiviteler</h2>
@@ -161,7 +158,6 @@ export default function ArticleDetail() {
         </div>
       )}
 
-      {/* EKLENDİ: AÇILIR PENCERE (MODAL) */}
       {activeModalAct && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
           <div style={{ backgroundColor: 'white', maxWidth: '750px', width: '100%', maxHeight: '85vh', overflowY: 'auto', borderRadius: '12px', padding: '30px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', textAlign: 'left' }}>
@@ -185,4 +181,10 @@ export default function ArticleDetail() {
               <div style={{ fontSize: '14px', color: '#334155', lineHeight: '1.6' }}>{renderFormattedContent(activeModalAct.steps)}</div>
             </div>
             
-            <button onClick={() => setActiveModalAct(null)} style={{ width: '1
+            <button onClick={() => setActiveModalAct(null)} style={{ width: '100%', backgroundColor: '#475569', color: 'white', border: 'none', padding: '12px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', marginTop: '20px' }}>Kapat</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
