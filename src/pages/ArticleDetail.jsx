@@ -160,7 +160,7 @@ export default function ArticleDetail() {
 
       {activeModalAct && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
-          <div style={{ backgroundColor: 'white', maxWidth: '750px', width: '100%', maxHeight: '85vh', overflowY: 'auto', borderRadius: '12px', padding: '30px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', textAlign: 'left' }}>
+          <div style={{ backgroundColor: 'white', maxWidth: '750px', width: '95%', maxHeight: '85vh', overflowY: 'auto', borderRadius: '12px', padding: '30px', boxSizing: 'border-box', overflowWrap: 'anywhere', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', textAlign: 'left' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #fed7aa', paddingBottom: '15px', marginBottom: '20px' }}>
               <div>
                 <span style={{ backgroundColor: '#fff7ed', color: '#ea580c', padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', border: '1px solid #ffedd5' }}>🎲 {activeModalAct.tag}</span>

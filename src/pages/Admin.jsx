@@ -8,9 +8,8 @@ export default function Admin() {
   const [user, setUser] = useState(null);
   const [articles, setArticles] = useState([]);
   const [activities, setActivities] = useState([]);
-  const [adminTab, setAdminTab] = useState('article'); // 'article' veya 'activity' formu ayırıcı
+  const [adminTab, setAdminTab] = useState('article'); 
   
-  // Giriş State'leri
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
@@ -31,8 +30,8 @@ export default function Admin() {
   const [actPrep, setActPrep] = useState('');
   const [actSteps, setActSteps] = useState('');
   const [actTag, setActTag] = useState('');
+  const [editingActId, setEditingActId] = useState(null); // YENİ: Aktivite Düzenleme ID'si
 
-  // Galeri State'leri
   const [gallery, setGallery] = useState([]); 
   const [galleryFile, setGalleryFile] = useState(null);
   const [galleryTag, setGalleryTag] = useState('');
@@ -42,7 +41,6 @@ export default function Admin() {
   const [currentPdfUrl, setCurrentPdfUrl] = useState(''); 
   const [currentImageUrl, setCurrentImageUrl] = useState(''); 
 
-  // KENDİ YETKİLİ ADRESİNİ YAZ
   const adminEmail = "mgulaydr@gmail.com";
 
   useEffect(() => {
@@ -75,16 +73,15 @@ export default function Admin() {
     try { await signInWithEmailAndPassword(auth, loginEmail, loginPassword); } catch (error) { alert("Giriş başarısız."); }
   };
 
-  // AKTİVİTE KARTINI KAYDETME MOTORU
+  // AKTİVİTE KARTINI KAYDETME VE GÜNCELLEME MOTORU
   const handleSaveActivity = async (e) => {
     e.preventDefault();
     setUploading(true);
     try {
-      // İlişkili makalenin adını bulalım
       const relatedArt = articles.find(a => a.id === actArticleId);
       const articleTitle = relatedArt ? relatedArt.title : 'Bağımsız / Genel';
 
-      await addDoc(collection(db, "activities"), {
+      const activityData = {
         title: actTitle,
         articleId: actArticleId,
         articleTitle: articleTitle,
@@ -92,17 +89,42 @@ export default function Admin() {
         prepList: actPrep,
         steps: actSteps,
         tag: actTag || 'Genel',
-        createdAt: new Date()
-      });
+        updatedAt: new Date()
+      };
 
-      alert("Aktivite Kartı başarıyla eklendi!");
-      setActTitle(''); setActPurpose(''); setActPrep(''); setActSteps(''); setActTag('');
+      if (editingActId) {
+        await updateDoc(doc(db, "activities", editingActId), activityData);
+        alert("Aktivite başarıyla güncellendi!");
+      } else {
+        await addDoc(collection(db, "activities"), { ...activityData, createdAt: new Date() });
+        alert("Aktivite Kartı başarıyla eklendi!");
+      }
+
+      handleCancelActEdit();
       fetchActivities();
     } catch (error) {
-      alert("Aktivite eklenirken hata oluştu.");
+      alert("Aktivite kaydedilirken hata oluştu.");
     } finally {
       setUploading(false);
     }
+  };
+
+  // YENİ: AKTİVİTE DÜZENLEME SEÇİMİ
+  const handleEditActSelect = (act) => {
+    setAdminTab('activity');
+    setEditingActId(act.id);
+    setActTitle(act.title || '');
+    setActArticleId(act.articleId || 'none');
+    setActPurpose(act.purpose || '');
+    setActPrep(act.prepList || '');
+    setActSteps(act.steps || '');
+    setActTag(act.tag || '');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelActEdit = () => {
+    setEditingActId(null);
+    setActTitle(''); setActPurpose(''); setActPrep(''); setActSteps(''); setActTag(''); setActArticleId('none');
   };
 
   const handleAddGalleryImage = async () => {
@@ -140,6 +162,7 @@ export default function Admin() {
   const handleDeleteActivity = async (id) => {
     if (window.confirm("Bu aktivite kartını silmek istediğinize emin misiniz?")) {
       await deleteDoc(doc(db, "activities", id)); fetchActivities();
+      if(editingActId === id) handleCancelActEdit();
     }
   };
 
@@ -159,15 +182,13 @@ export default function Admin() {
   return (
     <div style={{ maxWidth: '900px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '40px', textAlign: 'left' }}>
       
-      {/* FORM SEÇİCİ TABLAR */}
       <div style={{ display: 'flex', gap: '10px' }}>
-        <button onClick={() => { setAdminTab('article'); handleCancelEdit(); }} style={{ flex: 1, padding: '15px', backgroundColor: adminTab === 'article' ? '#004170' : '#e2e8f0', color: adminTab === 'article' ? 'white' : '#475569', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>📄 Yeni Eğitim Materyali Ekle</button>
-        <button onClick={() => setAdminTab('activity')} style={{ flex: 1, padding: '15px', backgroundColor: adminTab === 'activity' ? '#ea580c' : '#e2e8f0', color: adminTab === 'activity' ? 'white' : '#475569', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>🎲 Yeni Aktivite Kartı Ekle</button>
+        <button onClick={() => { setAdminTab('article'); handleCancelEdit(); }} style={{ flex: 1, padding: '15px', backgroundColor: adminTab === 'article' ? '#004170' : '#e2e8f0', color: adminTab === 'article' ? 'white' : '#475569', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>📄 Eğitim Materyali</button>
+        <button onClick={() => { setAdminTab('activity'); handleCancelActEdit(); }} style={{ flex: 1, padding: '15px', backgroundColor: adminTab === 'activity' ? '#ea580c' : '#e2e8f0', color: adminTab === 'activity' ? 'white' : '#475569', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>🎲 Aktivite Kartı</button>
         <button onClick={() => signOut(auth)} style={{ backgroundColor: '#64748b', color: 'white', padding: '0 20px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Çıkış</button>
       </div>
 
       {adminTab === 'article' ? (
-        /* SÜLEYMAN FORM 1: MAKALE/MATERYAL FORMU */
         <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)' }}>
           <h2 style={{ color: '#004170', marginTop: 0, marginBottom: '25px' }}>{editingId ? '📝 Materyali Düzenle' : 'Yeni Eğitim Materyali'}</h2>
           <form onSubmit={async (e) => {
@@ -212,7 +233,6 @@ export default function Admin() {
               <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>İçerik Metni</label>
               <textarea rows="10" required value={content} onChange={e => setContent(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}></textarea>
             </div>
-            {/* Galeri Bölümü */}
             <div style={{ backgroundColor: '#f8fafc', padding: '20px', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
               <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '10px' }}>🎨 Galeriye Resim Ekle</label>
               <div style={{ display: 'flex', gap: '10px' }}>
@@ -229,13 +249,15 @@ export default function Admin() {
               <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>📥 PDF Sunum Belgesi</label>
               <input type="file" accept=".pdf" onChange={e => setPdfFile(e.target.files[0])} />
             </div>
-            <button type="submit" disabled={uploading} style={{ backgroundColor: '#004170', color: 'white', padding: '15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>{uploading ? 'Yükleniyor...' : 'Kaydet ve Yayınla'}</button>
+            <div style={{ display: 'flex', gap: '15px' }}>
+              <button type="submit" disabled={uploading} style={{ flex: 1, backgroundColor: '#004170', color: 'white', padding: '15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>{uploading ? 'Yükleniyor...' : 'Kaydet ve Yayınla'}</button>
+              {editingId && <button type="button" onClick={handleCancelEdit} style={{ backgroundColor: '#64748b', color: 'white', padding: '15px 25px', border: 'none', borderRadius: '4px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>Vazgeç</button>}
+            </div>
           </form>
         </div>
       ) : (
-        /* FORMTYPE 2: AKTİVİTE KARTI FORMU (YENİ) */
         <div style={{ backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', borderTop: '4px solid #ea580c' }}>
-          <h2 style={{ color: '#ea580c', marginTop: 0, marginBottom: '25px' }}>🎲 Yeni Aktivite Kartı Oluştur</h2>
+          <h2 style={{ color: '#ea580c', marginTop: 0, marginBottom: '25px' }}>{editingActId ? '🎲 Aktivite Kartını Düzenle' : '🎲 Yeni Aktivite Kartı Oluştur'}</h2>
           <form onSubmit={handleSaveActivity} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div>
               <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Aktivite / Oyun Adı</label>
@@ -253,7 +275,7 @@ export default function Admin() {
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Bağlam / Süzme Etiketi</label>
-                <input type="text" placeholder="Örn: Isınma Egzersizi, Grup Çalışması, Kutu Oyunu" value={actTag} onChange={e => setActTag(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                <input type="text" placeholder="Örn: Isınma Egzersizi" value={actTag} onChange={e => setActTag(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
               </div>
             </div>
             <div>
@@ -261,14 +283,18 @@ export default function Admin() {
               <input type="text" required value={actPurpose} onChange={e => setActPurpose(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
             </div>
             <div>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Ön Hazırlık Listesi (Süzgeç destekler - Madde imi, tablo vs.)</label>
-              <textarea rows="5" required value={actPrep} onChange={e => setActPrep(e.target.value)} placeholder="- Gerekli materyaller..." style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}></textarea>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Ön Hazırlık Listesi</label>
+              <textarea rows="5" required value={actPrep} onChange={e => setActPrep(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}></textarea>
             </div>
             <div>
-              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Adım Adım Uygulama Rehberi (Süzgeç destekler - Madde imi, callout vs.)</label>
-              <textarea rows="8" required value={actSteps} onChange={e => setActSteps(e.target.value)} placeholder="1. Katılımcılar halka olur..." style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}></textarea>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px' }}>Adım Adım Uygulama Rehberi</label>
+              <textarea rows="8" required value={actSteps} onChange={e => setActSteps(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '4px', border: '1px solid #cbd5e1', fontFamily: 'monospace' }}></textarea>
             </div>
-            <button type="submit" disabled={uploading} style={{ backgroundColor: '#ea580c', color: 'white', padding: '15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>{uploading ? 'Yükleniyor...' : '🎲 Aktivite Kartını Yayınla'}</button>
+            
+            <div style={{ display: 'flex', gap: '15px' }}>
+              <button type="submit" disabled={uploading} style={{ flex: 1, backgroundColor: '#ea580c', color: 'white', padding: '15px', border: 'none', borderRadius: '4px', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}>{uploading ? 'Yükleniyor...' : (editingActId ? 'Değişiklikleri Kaydet' : '🎲 Aktivite Kartını Yayınla')}</button>
+              {editingActId && <button type="button" onClick={handleCancelActEdit} style={{ backgroundColor: '#64748b', color: 'white', padding: '15px 25px', border: 'none', borderRadius: '4px', fontSize: '16px', fontWeight: 'bold', cursor: 'pointer' }}>Vazgeç</button>}
+            </div>
           </form>
         </div>
       )}
@@ -292,8 +318,11 @@ export default function Admin() {
           <h3 style={{ color: '#ea580c', borderBottom: '2px solid #f97316', paddingBottom: '8px', marginTop: 0 }}>🎲 Aktivite Kartlarını Yönet</h3>
           {activities.map(act => (
             <div key={act.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 0', borderBottom: '1px solid #e2e8f0' }}>
-              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#9a3412' }}>{act.title}</span>
-              <button onClick={() => handleDeleteActivity(act.id)} style={{ fontSize: '12px', padding: '4px 8px', color: 'red', border: '1px solid #fee2e2', backgroundColor: '#fef2f2', borderRadius: '4px', cursor: 'pointer' }}>Sil</button>
+              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#9a3412' }}>{act.title.substring(0,30)}...</span>
+              <div style={{ display: 'flex', gap: '5px' }}>
+                <button onClick={() => handleEditActSelect(act)} style={{ fontSize: '12px', padding: '4px 8px', color: '#0369a1', border: '1px solid #bae6fd', backgroundColor: '#e0f2fe', borderRadius: '4px', cursor: 'pointer' }}>✏️ Düzenle</button>
+                <button onClick={() => handleDeleteActivity(act.id)} style={{ fontSize: '12px', padding: '4px 8px', color: 'red', border: '1px solid #fee2e2', backgroundColor: '#fef2f2', borderRadius: '4px', cursor: 'pointer' }}>🗑️ Sil</button>
+              </div>
             </div>
           ))}
         </div>
