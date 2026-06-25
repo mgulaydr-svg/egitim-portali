@@ -6,14 +6,13 @@ import ArticleCard from '../components/ArticleCard';
 
 export default function Home() {
   const [articles, setArticles] = useState([]);
-  const [activities, setActivities] = useState([]); // Yeni aktivite havuzu
+  const [activities, setActivities] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [searchParams] = useSearchParams(); 
   const activeCategory = searchParams.get('kategori');
 
-  // Filtreler ve Modal State'leri
   const [selectedTag, setSelectedTag] = useState('Tümü');
-  const [activeModalAct, setActiveModalAct] = useState(null); // Detayı açılan aktivite
+  const [activeModalAct, setActiveModalAct] = useState(null); 
 
   useEffect(() => {
     const fetchPortalData = async () => {
@@ -31,25 +30,23 @@ export default function Home() {
     fetchPortalData();
   }, []);
 
-  // Normal makale filtrelemesi
   const filteredArticles = articles.filter(item => {
     const matchesSearch = item.title?.toLowerCase().includes(searchTerm.toLowerCase()) || item.topic?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = activeCategory ? item.category === activeCategory : true;
     return matchesSearch && matchesCategory;
   });
 
-  // Akıllı Aktivite Süzme ve Etiket Toplama
   let uniqueTags = ['Tümü'];
   activities.forEach(act => { if (act.tag && !uniqueTags.includes(act.tag)) uniqueTags.push(act.tag); });
 
   const filteredActivities = selectedTag === 'Tümü' ? activities : activities.filter(a => a.tag === selectedTag);
 
-  // Modal İçi Şık Metin Biçimlendirici Süzgeç
+  // Modal Süzgeci - TABLO MANTIĞI EKLENDİ
   const renderModalFormattedText = (rawText) => {
     if (!rawText) return "";
     const lines = rawText.split('\n');
     const elements = [];
-    let inAside = false, asideContent = [];
+    let inAside = false, asideContent = [], inTable = false, tableRows = [];
 
     const renderTextWithBold = (text) => {
       if (!text.includes('**')) return text;
@@ -58,12 +55,40 @@ export default function Home() {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]; const trimmed = line.trim();
+      
       if (trimmed === '<aside>') { inAside = true; asideContent = []; continue; }
       if (trimmed === '</aside>') {
         inAside = false;
         elements.push(<div key={`aside-${i}`} style={{ backgroundColor: '#f0fdf4', borderLeft: '4px solid #10b981', padding: '15px', borderRadius: '4px', margin: '15px 0', color: '#166534' }}>{asideContent.map((al, ai) => <div key={ai}>{renderTextWithBold(al)}</div>)}</div>); continue;
       }
       if (inAside) { asideContent.push(trimmed); continue; }
+
+      // TABLO MOTORU EKLENDİ
+      if (trimmed.startsWith('|')) {
+        if (!inTable) { inTable = true; tableRows = []; }
+        if (!trimmed.includes('---')) tableRows.push(trimmed);
+        if (i === lines.length - 1 || !lines[i + 1].trim().startsWith('|')) {
+          inTable = false;
+          elements.push(
+            <div key={`table-${i}`} style={{ overflowX: 'auto', margin: '15px 0', borderRadius: '6px', boxShadow: '0 0 0 1px #e2e8f0' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', backgroundColor: 'white', fontSize: '13px' }}>
+                <tbody>
+                  {tableRows.map((row, rIdx) => {
+                    const cells = row.split('|').map(c => c.trim()).filter(c => c !== '');
+                    const isHeader = rIdx === 0;
+                    return (
+                      <tr key={`tr-${rIdx}`} style={{ backgroundColor: isHeader ? '#f8fafc' : 'white', borderBottom: '1px solid #e2e8f0' }}>
+                        {cells.map((cell, cIdx) => <td key={`td-${cIdx}`} style={{ padding: '8px 10px', fontWeight: isHeader ? 'bold' : 'normal', color: '#334155' }}>{renderTextWithBold(cell)}</td>)}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+        continue;
+      }
 
       if (trimmed.startsWith('- ')) {
         elements.push(<div key={`ul-${i}`} style={{ display: 'flex', margin: '6px 0' }}><span style={{ color: '#ea580c', marginRight: '10px' }}>•</span><span>{renderTextWithBold(trimmed.substring(2))}</span></div>); continue;
@@ -78,7 +103,6 @@ export default function Home() {
     return elements;
   };
 
-  // İnfografikler Sayfası için Tüm Galerileri Toplama Motoru
   let allGalleryItems = [];
   let uniqueGalleryTags = ['Tümü'];
   if (activeCategory === 'Sunumlar & İnfografikler') {
@@ -100,7 +124,6 @@ export default function Home() {
           {activeCategory === 'Aktivite Kartları' ? '🎲 İnteraktif Aktivite ve Oyun Çantası' : activeCategory ? `${activeCategory} Materyalleri` : 'Eğitim Materyalleri ve Araştırma Veritabanı'}
         </h2>
         
-        {/* AKTİVİTE SEKMEDE İSE ETİKETLERE GÖRE SÜZME PANELİNİ AÇ */}
         {activeCategory === 'Aktivite Kartları' ? (
           <div style={{ marginTop: '20px', display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '10px' }}>
             {uniqueTags.map(tag => (
@@ -119,7 +142,6 @@ export default function Home() {
       </div>
 
       {activeCategory === 'Aktivite Kartları' ? (
-        /* GÖRÜNÜM: JAPON/AKADEMİK AKTİVİTE KART GRIDI */
         filteredActivities.length === 0 ? (
           <p style={{ textAlign: 'center', color: '#64748b', marginTop: '40px' }}>Seçili etikette aktivite bulunamadı.</p>
         ) : (
@@ -135,7 +157,7 @@ export default function Home() {
                   <p style={{ color: '#78350f', fontSize: '13px', margin: '0 0 15px 0', lineHeight: '1.5' }}><strong>🎯 Amaç:</strong> {act.purpose.substring(0, 90)}...</p>
                 </div>
                 <div>
-                  {act.articleId !== 'none' && <Link to={`/article/${act.articleId}`} style={{ display: 'block', textGroup: 'none', fontSize: '12px', color: '#0284c7', marginBottom: '10px', fontWeight: '500' }}>📄 {act.articleTitle.substring(0,25)}...</Link>}
+                  {act.articleId !== 'none' && <Link to={`/article/${act.articleId}`} style={{ display: 'block', textDecoration: 'none', fontSize: '12px', color: '#0284c7', marginBottom: '10px', fontWeight: '500' }}>📄 {act.articleTitle.substring(0,25)}...</Link>}
                   <button onClick={() => setActiveModalAct(act)} style={{ width: '100%', backgroundColor: '#ea580c', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', transition: 'background-color 0.2s' }}>Uygulama Adımlarını Aç ➔</button>
                 </div>
               </div>
@@ -143,7 +165,6 @@ export default function Home() {
           </div>
         )
       ) : activeCategory === 'Sunumlar & İnfografikler' ? (
-        /* İNFOGRAFİK GALERİSİ */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '20px' }}>
           {filteredGallery.map((img, idx) => (
             <div key={idx} style={{ backgroundColor: 'white', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
@@ -157,13 +178,12 @@ export default function Home() {
           ))}
         </div>
       ) : (
-        /* STANDART KART GÖRÜNÜMÜ */
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '25px' }}>
           {filteredArticles.map(item => <ArticleCard key={item.id} item={item} />)}
         </div>
       )}
 
-      {/* DETAY MODALI (AÇILIR PENCERE - POPUP) */}
+      {/* DETAY MODALI */}
       {activeModalAct && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
           <div style={{ backgroundColor: 'white', maxWidth: '650px', width: '100%', maxHeight: '85vh', overflowY: 'auto', borderRadius: '12px', padding: '30px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', textAlign: 'left' }}>

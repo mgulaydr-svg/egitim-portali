@@ -7,7 +7,10 @@ export default function ArticleDetail() {
   const { id } = useParams();
   const [article, setArticle] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [linkedActivities, setLinkedActivities] = useState([]); // Makaleye bağlı aktiviteler
+  const [linkedActivities, setLinkedActivities] = useState([]);
+  
+  // YENİ: Modal (Açılır Pencere) State'i
+  const [activeModalAct, setActiveModalAct] = useState(null);
 
   useEffect(() => {
     const fetchArticleData = async () => {
@@ -16,7 +19,6 @@ export default function ArticleDetail() {
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) setArticle(docSnap.data());
 
-        // Bu makaleye bağlı aktiviteleri de çekelim (Hata vermemesi için client-side filtreleme)
         const actSnap = await getDocs(collection(db, "activities"));
         const allActs = actSnap.docs.map(d => ({ id: d.id, ...d.data() }));
         setLinkedActivities(allActs.filter(a => a.articleId === id));
@@ -26,7 +28,6 @@ export default function ArticleDetail() {
     fetchArticleData();
   }, [id]);
 
-  // Akıllı Metin Dönüştürücü Süzgeç (Aktiviteler için de ortak çalışacak)
   const renderFormattedContent = (rawText) => {
     if (!rawText) return "";
     const lines = rawText.split('\n');
@@ -52,7 +53,6 @@ export default function ArticleDetail() {
       }
       if (inAside) { asideContent.push(trimmed); continue; }
 
-      // Tablo Desteği
       if (trimmed.startsWith('|')) {
         if (!inTable) { inTable = true; tableRows = []; }
         if (!trimmed.includes('---')) tableRows.push(trimmed);
@@ -94,7 +94,6 @@ export default function ArticleDetail() {
       
       if (trimmed === '') { elements.push(<div key={`space-${i}`} style={{ height: '12px' }} />); continue; }
       
-      // Liste ve Madde İşaretleri
       if (trimmed.startsWith('- ')) {
         elements.push(<div key={`ul-${i}`} style={{ display: 'flex', alignItems: 'flex-start', marginBottom: '8px' }}><span style={{ color: '#ea580c', marginRight: '12px', fontSize: '18px' }}>•</span><span style={{ color: '#334155', fontSize: '16px', lineHeight: '1.6', flex: 1 }}>{renderTextWithBold(trimmed.substring(2))}</span></div>); continue;
       }
@@ -112,7 +111,7 @@ export default function ArticleDetail() {
   if (!article) return <div style={{ textAlign: 'center', marginTop: '50px', color: '#b91c1c' }}>İçerik bulunamadı.</div>;
 
   return (
-    <div style={{ maxWidth: '900px', margin: '0 auto', backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', textAlign: 'left' }}>
+    <div style={{ maxWidth: '900px', margin: '0 auto', backgroundColor: 'white', padding: '40px', borderRadius: '8px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', textAlign: 'left', position: 'relative' }}>
       <Link to="/" style={{ display: 'inline-block', marginBottom: '20px', color: '#475569', textDecoration: 'none', fontWeight: 'bold' }}>⬅️ Listeye Geri Dön</Link>
       
       <h1 style={{ color: '#004170', fontSize: '32px', marginTop: 0, marginBottom: '25px', lineHeight: '1.3' }}>{article.title}</h1>
@@ -125,31 +124,65 @@ export default function ArticleDetail() {
         </div>
       )}
 
-      {/* YENİ: MAKALEYE BAĞLI AKTİVİTE KARTLARI */}
-      {linkedActivities.length > 0 && (
-        <div style={{ marginTop: '60px', paddingTop: '30px', borderTop: '3px solid #ea580c' }}>
-          <h2 style={{ color: '#ea580c', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>🎲 Bu Eğitime Ait Uygulamalı Aktiviteler</h2>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
-            {linkedActivities.map(act => (
-              <div key={act.id} style={{ backgroundColor: '#fff7ed', border: '2px dashed #fb923c', padding: '30px', borderRadius: '8px', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '15px' }}>
-                  <h3 style={{ color: '#9a3412', margin: 0 }}>{act.title}</h3>
-                  <span style={{ backgroundColor: '#ea580c', color: 'white', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 'bold' }}>🏷️ {act.tag}</span>
-                </div>
-                <p style={{ color: '#78350f', fontWeight: '500', margin: '0 0 20px 0', borderBottom: '1px solid #fed7aa', paddingBottom: '10px' }}>🎯 <strong>Amacı:</strong> {act.purpose}</p>
-                <div style={{ marginBottom: '20px' }}>
-                  <h4 style={{ color: '#c2410c', margin: '0 0 8px 0' }}>📦 Ön Hazırlık ve Materyaller</h4>
-                  <div>{renderFormattedContent(act.prepList)}</div>
-                </div>
-                <div>
-                  <h4 style={{ color: '#c2410c', margin: '0 0 8px 0' }}>🚀 Adım Adım Uygulama Rehberi</h4>
-                  <div>{renderFormattedContent(act.steps)}</div>
-                </div>
+      {article.gallery && article.gallery.length > 0 && (
+        <div style={{ marginTop: '50px', paddingTop: '30px', borderTop: '2px dashed #cbd5e1' }}>
+          <h3 style={{ color: '#0f766e', marginBottom: '20px' }}>🖼️ İlgili İnfografikler ve Görseller</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '20px' }}>
+            {article.gallery.map((img, idx) => (
+              <div key={idx} style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.05)' }}>
+                <a href={img.url} target="_blank" rel="noreferrer">
+                  <img src={img.url} alt={img.tag} style={{ width: '100%', height: '160px', objectFit: 'cover', display: 'block' }} />
+                </a>
+                <div style={{ backgroundColor: '#f8fafc', padding: '10px', textAlign: 'center', fontSize: '13px', color: '#475569', fontWeight: 'bold' }}>🏷️ {img.tag}</div>
               </div>
             ))}
           </div>
         </div>
       )}
-    </div>
-  );
-}
+
+      {/* DÜZENLENDİ: MAKALEYE BAĞLI AKTİVİTELER KART GÖRÜNÜMÜNE ÇEVRİLDİ */}
+      {linkedActivities.length > 0 && (
+        <div style={{ marginTop: '60px', paddingTop: '30px', borderTop: '3px solid #ea580c' }}>
+          <h2 style={{ color: '#ea580c', marginBottom: '25px', display: 'flex', alignItems: 'center', gap: '10px' }}>🎲 Bu Eğitime Ait Uygulamalı Aktiviteler</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '25px' }}>
+            {linkedActivities.map(act => (
+              <div key={act.id} style={{ backgroundColor: '#fff7ed', border: '2px dashed #fb923c', borderRadius: '12px', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', boxShadow: '0 4px 6px rgba(0,0,0,0.02)' }}>
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                    <span style={{ backgroundColor: '#ffedd5', color: '#ea580c', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold' }}>🎲 {act.tag}</span>
+                  </div>
+                  <h3 style={{ color: '#9a3412', margin: '0 0 10px 0', fontSize: '18px', lineHeight: '1.3' }}>{act.title}</h3>
+                  <p style={{ color: '#78350f', fontSize: '13px', margin: '0 0 15px 0', lineHeight: '1.5' }}><strong>🎯 Amaç:</strong> {act.purpose.substring(0, 90)}...</p>
+                </div>
+                <button onClick={() => setActiveModalAct(act)} style={{ width: '100%', backgroundColor: '#ea580c', color: 'white', border: 'none', padding: '10px', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', transition: 'background-color 0.2s' }}>Uygulama Adımlarını Aç ➔</button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* EKLENDİ: AÇILIR PENCERE (MODAL) */}
+      {activeModalAct && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(15, 23, 42, 0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '20px' }}>
+          <div style={{ backgroundColor: 'white', maxWidth: '750px', width: '100%', maxHeight: '85vh', overflowY: 'auto', borderRadius: '12px', padding: '30px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)', textAlign: 'left' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #fed7aa', paddingBottom: '15px', marginBottom: '20px' }}>
+              <div>
+                <span style={{ backgroundColor: '#fff7ed', color: '#ea580c', padding: '4px 10px', borderRadius: '4px', fontSize: '12px', fontWeight: 'bold', border: '1px solid #ffedd5' }}>🎲 {activeModalAct.tag}</span>
+                <h3 style={{ margin: '8px 0 0 0', color: '#9a3412', fontSize: '22px' }}>{activeModalAct.title}</h3>
+              </div>
+              <button onClick={() => setActiveModalAct(null)} style={{ background: '#f1f5f9', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', color: '#64748b' }}>X</button>
+            </div>
+            
+            <p style={{ backgroundColor: '#fff7ed', padding: '12px', borderRadius: '6px', color: '#78350f', fontSize: '14px', margin: '0 0 20px 0' }}>🎯 <strong>Aktivitenin Amacı:</strong> {activeModalAct.purpose}</p>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <h4 style={{ color: '#c2410c', margin: '0 0 8px 0', fontSize: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '4px' }}>📦 Ön Hazırlık ve Materyaller</h4>
+              <div style={{ fontSize: '14px', color: '#334155' }}>{renderFormattedContent(activeModalAct.prepList)}</div>
+            </div>
+
+            <div style={{ marginBottom: '10px' }}>
+              <h4 style={{ color: '#c2410c', margin: '0 0 8px 0', fontSize: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '4px' }}>🚀 Adım Adım Uygulama Rehberi</h4>
+              <div style={{ fontSize: '14px', color: '#334155', lineHeight: '1.6' }}>{renderFormattedContent(activeModalAct.steps)}</div>
+            </div>
+            
+            <button onClick={() => setActiveModalAct(null)} style={{ width: '1
