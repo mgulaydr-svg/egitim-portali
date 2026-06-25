@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { db, auth } from '../services/firebase';
 import { collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from 'firebase/firestore';
-import { signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
+import { signInWithRedirect, GoogleAuthProvider, onAuthStateChanged, signOut } from 'firebase/auth';
 import { uploadToCloudinary } from '../services/cloudinary';
 
 export default function Admin() {
@@ -96,7 +96,11 @@ export default function Admin() {
 
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
-    try { await signInWithPopup(auth, provider); } catch (error) { alert("Giriş başarısız."); }
+    try { 
+      await signInWithRedirect(auth, provider); 
+    } catch (error) { 
+      alert("Giriş başlatılamadı."); 
+    }
   };
 
   const handleLogout = () => { signOut(auth); };
