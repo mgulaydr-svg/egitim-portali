@@ -75,7 +75,7 @@ export default function Navbar() {
         <header className="top-header">
           <Link to="/" className="brand-area">
             {/* LOGO GÖRSELİ */}
-            <img src="/logo.png" alt="Esti Biraz Logo" className="header-logo" />
+            <img src="/logo.jpg" alt="Esti Biraz Logo" className="header-logo" />
             <div className="brand-titles">
               <h1 className="brand-title">Esti Biraz</h1>
               <h2 className="brand-subtitle">EĞİTİM PORTALI</h2>
